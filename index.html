@@ -5,93 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mercadito Nandaime</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
-body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  background: #f2f2f2;
-}
-
-header {
-  background: #128C7E;
-  color: white;
-  padding: 15px;
-  text-align: center;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.sub {
-  text-align:center;
-  padding:8px;
-  font-size:14px;
-}
-
-.container {
-  padding:10px;
-}
-
-.card {
-  background:white;
-  margin-bottom:10px;
-  border-radius:10px;
-  overflow:hidden;
-  box-shadow:0 2px 5px rgba(0,0,0,0.1);
-}
-
-img {
-  width:100%;
-  height:160px;
-  object-fit:cover;
-}
-
-.content {
-  padding:10px;
-}
-
-.price {
-  color:green;
-  font-weight:bold;
-}
-
-button {
-  width:100%;
-  padding:10px;
-  margin-top:5px;
-  border:none;
-  border-radius:5px;
-}
-
-.whatsapp {
-  background:#25D366;
-  color:white;
-}
-
-.publish {
-  background:#ff9800;
-  color:white;
-  font-weight:bold;
-}
-
-.section-title {
-  margin:10px 0;
-  font-weight:bold;
-}
-
-.form-box {
-  display:none;
-  background:white;
-  padding:10px;
-  border-radius:10px;
-  margin-bottom:10px;
-}
-
-input, select, textarea {
-  width:100%;
-  padding:8px;
-  margin-top:5px;
-  margin-bottom:10px;
-}
+body { font-family: Arial; margin:0; background:#f2f2f2; }
+header { background:#128C7E; color:white; padding:15px; text-align:center; font-weight:bold; }
+.sub { text-align:center; padding:8px; font-size:14px; }
+.container { padding:10px; }
+.card { background:white; margin-bottom:10px; border-radius:10px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.1);}
+img { width:100%; height:160px; object-fit:cover; }
+.content { padding:10px; }
+.price { color:green; font-weight:bold; }
+button { width:100%; padding:10px; margin-top:5px; border:none; border-radius:5px; }
+.whatsapp { background:#25D366; color:white; }
+.publish { background:#ff9800; color:white; font-weight:bold; }
+.form-box { display:none; background:white; padding:10px; border-radius:10px; margin-bottom:10px; }
+input, select, textarea { width:100%; padding:8px; margin:5px 0 10px; }
 </style>
 </head>
 
@@ -100,7 +29,7 @@ input, select, textarea {
 <header>Mercadito Nandaime</header>
 
 <div class="sub">
-Solo en Nandaime • Publica por $0.85 (5 días)
+Publica por $0.85 • Activo 5 días
 </div>
 
 <div class="container">
@@ -110,61 +39,123 @@ Solo en Nandaime • Publica por $0.85 (5 días)
 <div class="form-box" id="formBox">
   <input id="title" placeholder="Título">
   <input id="price" placeholder="Precio">
+  
   <select id="category">
-    <option>Productos</option>
-    <option>Servicios</option>
-    <option>Comida</option>
+    <option value="products">Productos</option>
+    <option value="services">Servicios</option>
+    <option value="restaurants">Restaurantes</option>
   </select>
+
   <textarea id="desc" placeholder="Descripción"></textarea>
   <input id="phone" placeholder="WhatsApp (+505...)">
 
-  <button onclick="submitAd()">Publicar ($0.85)</button>
+  <button onclick="startPayment()">Publicar ($0.85)</button>
 </div>
 
-<div id="paymentBox" style="display:none; background:white; padding:10px; border-radius:10px;">
-  <p>Para activar tu anuncio paga aquí:</p>
-  <button onclick="pay()">Pagar con tarjeta</button>
-  <p>Luego envía comprobante por WhatsApp</p>
-</div>
-
-<h3 class="section-title">🛍️ Publicaciones</h3>
-
-<div class="card">
-  <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519">
-  <div class="content">
-    <div>Zapatos deportivos</div>
-    <div class="price">C$900</div>
-    <button class="whatsapp" onclick="contact()">Contactar</button>
-  </div>
-</div>
-
-<div class="card">
-  <img src="https://images.unsplash.com/photo-1556228453-efd6c1ff04f6">
-  <div class="content">
-    <div>Servicio de uñas</div>
-    <div class="price">C$300</div>
-    <button class="whatsapp" onclick="contact()">Contactar</button>
-  </div>
-</div>
+<h3>🛍️ Publicaciones</h3>
+<div id="listings"></div>
 
 </div>
 
 <script>
+
+// 🔑 REPLACE WITH YOUR SUPABASE KEYS
+const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
+const SUPABASE_KEY = "YOUR_ANON_KEY";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// UI
 function toggleForm(){
   document.getElementById("formBox").style.display = "block";
 }
 
-function submitAd(){
-  document.getElementById("paymentBox").style.display = "block";
+// TEMP STORE BEFORE PAYMENT
+let pendingAd = null;
+
+// Step 1: Save data + go to payment
+function startPayment(){
+  pendingAd = {
+    title: document.getElementById("title").value,
+    price: document.getElementById("price").value,
+    category: document.getElementById("category").value,
+    description: document.getElementById("desc").value,
+    phone: document.getElementById("phone").value
+  };
+
+  localStorage.setItem("pendingAd", JSON.stringify(pendingAd));
+
+  window.location.href = "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
 }
 
-function pay(){
-  window.open("https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e","_blank");
+// Step 2: After payment redirect back to your site like:
+// yoursite.com/?paid=true
+
+async function checkPaymentReturn(){
+  const urlParams = new URLSearchParams(window.location.search);
+  if(urlParams.get("paid") === "true"){
+    
+    const data = JSON.parse(localStorage.getItem("pendingAd"));
+    if(!data) return;
+
+    const expires = data.category === "restaurants"
+      ? null
+      : new Date(Date.now() + 5*24*60*60*1000).toISOString();
+
+    await supabase.from("listings").insert([{
+      title: data.title,
+      price: data.price,
+      category: data.category,
+      description: data.description,
+      phone: data.phone,
+      is_active: true,
+      expires_at: expires
+    }]);
+
+    localStorage.removeItem("pendingAd");
+    window.location.href = "/";
+  }
 }
 
-function contact(){
-  window.open("https://wa.me/50558365522?text=Hola,%20vi%20tu%20publicación%20en%20Mercadito%20Nandaime","_blank");
+// Load listings
+async function loadListings(){
+  const { data } = await supabase
+    .from("listings")
+    .select("*")
+    .eq("is_active", true)
+    .order("created_at", { ascending:false });
+
+  const container = document.getElementById("listings");
+  container.innerHTML = "";
+
+  data.forEach(item => {
+
+    // hide expired (extra safety)
+    if(item.expires_at && new Date(item.expires_at) < new Date()){
+      return;
+    }
+
+    container.innerHTML += `
+      <div class="card">
+        <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519">
+        <div class="content">
+          <div>${item.title}</div>
+          <div class="price">${item.price}</div>
+          <button class="whatsapp" onclick="contact('${item.phone}')">Contactar</button>
+        </div>
+      </div>
+    `;
+  });
 }
+
+function contact(phone){
+  window.open(`https://wa.me/${phone}?text=Hola vi tu anuncio`, "_blank");
+}
+
+// init
+checkPaymentReturn();
+loadListings();
+
 </script>
 
 </body>
