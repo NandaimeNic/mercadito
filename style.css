@@ -182,3 +182,12 @@ header{
 .form-box .publish{
   margin-top:10px;
 }
+
+.search-box button{
+  background:#D4AF37;
+  color:#000;
+  border:none;
+  padding:12px 16px;
+  border-radius:10px;
+  font-weight:bold;
+}
