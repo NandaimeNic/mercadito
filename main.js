@@ -23,6 +23,29 @@ try {
   alert("Error cargando Supabase");
 }
 
+// --- Categories ---
+const CATEGORIES = [
+  "ropa",
+  "electronica",
+  "reparaciones",
+  "hogar",
+  "vehiculos",
+  "comida",
+  "servicios",
+  "otros"
+];
+
+const CATEGORY_LABELS = {
+  ropa: "👕 Ropa",
+  electronica: "📱 Electrónica",
+  reparaciones: "🔧 Reparaciones",
+  hogar: "🏠 Hogar",
+  vehiculos: "🚗 Vehículos",
+  comida: "🍔 Comida",
+  servicios: "🧰 Servicios",
+  otros: "📦 Otros"
+};
+
 // --- Toggle form ---
 function toggleForm(){
   const box = document.getElementById("formBox");
@@ -90,7 +113,7 @@ async function checkPaymentReturn(){
   }
 }
 
-// --- Load listings ---
+// --- Load listings (UPDATED with categories) ---
 async function loadListings(){
 
   const container = document.getElementById("listings");
@@ -116,29 +139,50 @@ async function loadListings(){
 
     container.innerHTML = "";
 
-    data.forEach(item => {
+    CATEGORIES.forEach(cat => {
 
-      if(
-        item.expires_at &&
-        new Date(item.expires_at) < new Date()
-      ){
-        return;
-      }
+      const items = data.filter(item => {
+        if(item.category !== cat) return false;
 
-      container.innerHTML += `
-        <div class="card">
-          <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519">
-          <div class="content">
-            <div><strong>${item.title}</strong></div>
-            <div>${item.description || ""}</div>
-            <div class="price">${item.price || ""}</div>
-            <button class="whatsapp"
-              onclick="contact('${item.phone}')">
-              Contactar
-            </button>
-          </div>
-        </div>
+        if(
+          item.expires_at &&
+          new Date(item.expires_at) < new Date()
+        ){
+          return false;
+        }
+
+        return true;
+      });
+
+      if(items.length === 0) return;
+
+      const section = document.createElement("div");
+
+      // ✅ YOUR REQUIRED LINE
+      section.innerHTML = `
+        <div class="category-title">${CATEGORY_LABELS[cat]}</div>
       `;
+
+      items.forEach(item => {
+
+        section.innerHTML += `
+          <div class="card">
+            <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519">
+            <div class="content">
+              <div><strong>${item.title}</strong></div>
+              <div>${item.description || ""}</div>
+              <div class="price">${item.price || ""}</div>
+              <button class="whatsapp"
+                onclick="contact('${item.phone}')">
+                Contactar
+              </button>
+            </div>
+          </div>
+        `;
+      });
+
+      container.appendChild(section);
+
     });
 
   }catch(err){
@@ -157,7 +201,7 @@ function contact(phone){
   );
 }
 
-// --- INIT (SAFE) ---
+// --- INIT ---
 window.addEventListener("DOMContentLoaded", () => {
   checkPaymentReturn();
   loadListings();
