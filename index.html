@@ -6,10 +6,8 @@
 
 <title>Mercadito Nandaime</title>
 
-<!-- CSS -->
-<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="/style.css?v=4">
 
-<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 </head>
@@ -26,13 +24,11 @@ Compra y vende en Nandaime
 
 <button class="publish" onclick="toggleForm()">Publicar anuncio</button>
 
-<!-- SEARCH -->
 <div class="search-box">
   <input placeholder="¿Qué buscas en Nandaime?">
   <button>Buscar</button>
 </div>
 
-<!-- FORM -->
 <div class="form-box" id="formBox">
 
 <input id="title" placeholder="Título">
@@ -50,22 +46,22 @@ Compra y vende en Nandaime
 </select>
 
 <textarea id="desc" placeholder="Descripción"></textarea>
+
+<input type="file" id="imageInput" accept="image/*">
+
 <input id="phone" placeholder="WhatsApp (+505...)">
 
 <button class="publish" onclick="startPayment()">Publicar</button>
 
 </div>
 
-<!-- LISTINGS -->
 <div id="listings"></div>
 
 </div>
 
-<!-- MODAL -->
 <div id="detailModal"></div>
 
-<!-- JS -->
-<script src="./main.js" defer></script>
+<script src="/main.js?v=4" defer></script>
 
 </body>
 </html>
