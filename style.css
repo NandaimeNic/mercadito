@@ -139,3 +139,46 @@ header{
   max-width:400px;
   color:#fff;
 }
+
+/* --- FORM FIX --- */
+.form-box{
+  width:90%;
+  margin:10px auto;
+  display:none;
+}
+
+/* Inputs, select, textarea */
+.form-box input,
+.form-box select,
+.form-box textarea{
+  width:100%;
+  padding:12px;
+  margin-bottom:10px;
+  border-radius:10px;
+  border:none;
+  font-size:16px;
+  background:#1a1a1a;
+  color:#fff;
+}
+
+/* Fix placeholder color */
+.form-box input::placeholder,
+.form-box textarea::placeholder{
+  color:#888;
+}
+
+/* Select fix */
+.form-box select{
+  color:#fff;
+}
+
+/* Textarea size */
+.form-box textarea{
+  min-height:80px;
+  resize:none;
+}
+
+/* Button spacing */
+.form-box .publish{
+  margin-top:10px;
+}
