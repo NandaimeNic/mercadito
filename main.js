@@ -1,19 +1,36 @@
+// DEBUG (remove later)
+alert("JS loaded");
+
+// --- Supabase config ---
 const SUPABASE_URL = "https://mvcqoyhepcfoyutcvtrh.supabase.co";
 const SUPABASE_KEY = "sb_publishable_H6BeHo4_ihvf0QHBSAL0yg_-RmyxNLF";
 
-const supabase = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
+// --- Safe client init ---
+let supabaseClient;
 
-/* Toggle form */
+try {
+  if (!window.supabase) {
+    throw new Error("Supabase library not loaded");
+  }
+
+  supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+
+} catch (err) {
+  console.error(err);
+  alert("Error cargando Supabase");
+}
+
+// --- Toggle form ---
 function toggleForm(){
   const box = document.getElementById("formBox");
   box.style.display =
     box.style.display === "block" ? "none" : "block";
 }
 
-/* Start payment */
+// --- Payment ---
 function startPayment(){
 
   const pendingAd = {
@@ -29,37 +46,28 @@ function startPayment(){
     return;
   }
 
-  localStorage.setItem(
-    "pendingAd",
-    JSON.stringify(pendingAd)
-  );
+  localStorage.setItem("pendingAd", JSON.stringify(pendingAd));
 
   window.location.href =
   "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
 }
 
-/* Return after payment */
+// --- Payment return ---
 async function checkPaymentReturn(){
 
-  const urlParams =
-    new URLSearchParams(window.location.search);
+  const urlParams = new URLSearchParams(window.location.search);
 
   if(urlParams.get("paid") === "true"){
 
-    const data = JSON.parse(
-      localStorage.getItem("pendingAd")
-    );
-
+    const data = JSON.parse(localStorage.getItem("pendingAd"));
     if(!data) return;
 
     const expires =
       data.category === "restaurants"
       ? null
-      : new Date(
-        Date.now() + 5*24*60*60*1000
-      ).toISOString();
+      : new Date(Date.now() + 5*24*60*60*1000).toISOString();
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from("listings")
       .insert([{
         title: data.title,
@@ -73,7 +81,7 @@ async function checkPaymentReturn(){
 
     if(error){
       alert("Error guardando anuncio");
-      console.log(error);
+      console.error(error);
       return;
     }
 
@@ -82,15 +90,14 @@ async function checkPaymentReturn(){
   }
 }
 
-/* Load listings */
+// --- Load listings ---
 async function loadListings(){
 
-  const container =
-    document.getElementById("listings");
+  const container = document.getElementById("listings");
 
   try{
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from("listings")
       .select("*")
       .order("id", { ascending:false });
@@ -140,9 +147,8 @@ async function loadListings(){
   }
 }
 
-/* WhatsApp */
+// --- WhatsApp ---
 function contact(phone){
-
   const clean = phone.replace(/\D/g,"");
 
   window.open(
@@ -151,6 +157,8 @@ function contact(phone){
   );
 }
 
-/* Init */
-checkPaymentReturn();
-loadListings();
+// --- INIT (SAFE) ---
+window.addEventListener("DOMContentLoaded", () => {
+  checkPaymentReturn();
+  loadListings();
+});
