@@ -152,8 +152,7 @@ Después del pago tu anuncio se publicará automáticamente.
 =========================== */
 const SUPABASE_URL = "https://mvcqoyhepcfoyutcvtrh.supabase.co";
 
-/* REPLACE THIS WITH YOUR REAL KEY */
-const SUPABASE_KEY = "PASTE_YOUR_NEW_PUBLISHABLE_KEY_HERE";
+const SUPABASE_KEY = "sb_publishable_H6BeHo4_ihvf0QHBSAL0yg_-RmyxNLF";
 
 const supabase = window.supabase.createClient(
   SUPABASE_URL,
@@ -275,7 +274,6 @@ async function loadListings(){
 
   data.forEach(item => {
 
-    /* Hide expired */
     if(
       item.expires_at &&
       new Date(item.expires_at) < new Date()
