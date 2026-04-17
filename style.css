@@ -200,3 +200,10 @@ button{
 input, textarea, select{
   outline:none;
 }
+
+/* image input */
+#imageInput{
+  width:100%;
+  margin-bottom:10px;
+  color:#fff;
+}
