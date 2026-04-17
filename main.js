@@ -1,3 +1,4 @@
+
 // --- Supabase config ---
 const SUPABASE_URL = "https://mvcqoyhepcfoyutcvtrh.supabase.co";
 const SUPABASE_KEY = "sb_publishable_H6BeHo4_ihvf0QHBSAL0yg_-RmyxNLF";
@@ -31,19 +32,16 @@ window.addEventListener("DOMContentLoaded", init);
 async function login(){
 
   const email = prompt("Ingresa tu email:");
-
   if(!email) return;
 
-  const { error } = await supabaseClient.auth.signInWithOtp({
-    email: email
-  });
+  const { error } = await supabaseClient.auth.signInWithOtp({ email });
 
   if(error){
     alert("Error enviando código");
     return;
   }
 
-  alert("Revisa tu correo para continuar");
+  alert("Revisa tu correo");
 }
 
 async function requireAuth(){
@@ -66,18 +64,47 @@ function toggleForm(){
     box.style.display === "block" ? "none" : "block";
 }
 
+// --- IMAGE UPLOAD ---
+async function uploadImage(file){
+
+  if(!file) return null;
+
+  const fileName = Date.now() + "_" + file.name;
+
+  const { error } = await supabaseClient
+    .storage
+    .from("listings")
+    .upload(fileName, file);
+
+  if(error){
+    console.error(error);
+    return null;
+  }
+
+  const { data } = supabaseClient
+    .storage
+    .from("listings")
+    .getPublicUrl(fileName);
+
+  return data.publicUrl;
+}
+
 // --- Payment ---
 async function startPayment(){
 
   const isAuth = await requireAuth();
   if(!isAuth) return;
 
+  const file = document.getElementById("imageInput").files[0];
+  const imageUrl = await uploadImage(file);
+
   const pendingAd = {
     title: document.getElementById("title").value.trim(),
     price: document.getElementById("price").value.trim(),
     category: document.getElementById("category").value,
     description: document.getElementById("desc").value.trim(),
-    phone: document.getElementById("phone").value.trim()
+    phone: document.getElementById("phone").value.trim(),
+    image_url: imageUrl
   };
 
   if(!pendingAd.title || !pendingAd.phone){
@@ -122,7 +149,8 @@ async function checkPaymentReturn(){
         phone: ad.phone,
         user_id: data.user.id,
         is_active: true,
-        expires_at: expires
+        expires_at: expires,
+        image_url: ad.image_url
       }]);
 
     if(error){
@@ -132,34 +160,28 @@ async function checkPaymentReturn(){
     }
 
     localStorage.removeItem("pendingAd");
-    window.location.href = "index.html";
+    window.location.href = "/";
   }
 }
 
 // --- Categories ---
 const CATEGORIES = [
-  "ropa",
-  "electronica",
-  "reparaciones",
-  "hogar",
-  "vehiculos",
-  "comida",
-  "servicios",
-  "otros"
+  "ropa","electronica","reparaciones","hogar",
+  "vehiculos","comida","servicios","otros"
 ];
 
 const CATEGORY_LABELS = {
-  ropa: "👕 Ropa",
-  electronica: "📱 Electrónica",
-  reparaciones: "🔧 Reparaciones",
-  hogar: "🏠 Hogar",
-  vehiculos: "🚗 Vehículos",
-  comida: "🍔 Comida",
-  servicios: "🧰 Servicios",
-  otros: "📦 Otros"
+  ropa:"👕 Ropa",
+  electronica:"📱 Electrónica",
+  reparaciones:"🔧 Reparaciones",
+  hogar:"🏠 Hogar",
+  vehiculos:"🚗 Vehículos",
+  comida:"🍔 Comida",
+  servicios:"🧰 Servicios",
+  otros:"📦 Otros"
 };
 
-// --- Load listings (HORIZONTAL UI) ---
+// --- Load listings ---
 async function loadListings(){
 
   const container = document.getElementById("listings");
@@ -167,10 +189,10 @@ async function loadListings(){
   const { data, error } = await supabaseClient
     .from("listings")
     .select("*")
-    .order("id", { ascending:false });
+    .order("id",{ascending:false});
 
   if(error){
-    container.innerHTML = "Error cargando";
+    container.innerHTML = "Error";
     return;
   }
 
@@ -180,12 +202,10 @@ async function loadListings(){
 
     const items = data.filter(item => {
       if(item.category !== cat) return false;
-
       if(item.expires_at &&
          new Date(item.expires_at) < new Date()){
         return false;
       }
-
       return true;
     });
 
@@ -207,7 +227,7 @@ async function loadListings(){
 
       card.innerHTML = `
         <div class="badge">Nuevo</div>
-        <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519">
+        <img src="${item.image_url || 'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519'}">
         <div class="content">
           <div><strong>${item.title}</strong></div>
           <div class="price">${item.price || ""}</div>
@@ -220,13 +240,11 @@ async function loadListings(){
     });
 
     container.appendChild(section);
-
   });
 }
 
 // --- Modal ---
 function openDetail(item){
-
   const modal = document.getElementById("detailModal");
 
   modal.innerHTML = `
