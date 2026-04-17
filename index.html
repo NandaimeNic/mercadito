@@ -8,19 +8,97 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body { font-family: Arial; margin:0; background:#f2f2f2; }
-header { background:#128C7E; color:white; padding:15px; text-align:center; font-weight:bold; }
-.sub { text-align:center; padding:8px; font-size:14px; }
-.container { padding:10px; }
-.card { background:white; margin-bottom:10px; border-radius:10px; overflow:hidden; box-shadow:0 2px 5px rgba(0,0,0,0.1);}
-img { width:100%; height:160px; object-fit:cover; }
-.content { padding:10px; }
-.price { color:green; font-weight:bold; }
-button { width:100%; padding:10px; margin-top:5px; border:none; border-radius:5px; }
-.whatsapp { background:#25D366; color:white; }
-.publish { background:#ff9800; color:white; font-weight:bold; }
-.form-box { display:none; background:white; padding:10px; border-radius:10px; margin-bottom:10px; }
-input, select, textarea { width:100%; padding:8px; margin:5px 0 10px; }
+body{
+  font-family:Arial,sans-serif;
+  margin:0;
+  background:#f2f2f2;
+}
+
+header{
+  background:#128C7E;
+  color:white;
+  padding:15px;
+  text-align:center;
+  font-weight:bold;
+  font-size:22px;
+}
+
+.sub{
+  text-align:center;
+  padding:8px;
+  font-size:14px;
+}
+
+.container{
+  padding:10px;
+  max-width:700px;
+  margin:auto;
+}
+
+.card{
+  background:white;
+  margin-bottom:12px;
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:0 2px 5px rgba(0,0,0,.1);
+}
+
+img{
+  width:100%;
+  height:160px;
+  object-fit:cover;
+}
+
+.content{
+  padding:10px;
+}
+
+.price{
+  color:green;
+  font-weight:bold;
+  margin-top:5px;
+}
+
+button{
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.whatsapp{
+  background:#25D366;
+  color:white;
+}
+
+.publish{
+  background:#ff9800;
+  color:white;
+  font-weight:bold;
+}
+
+.form-box{
+  display:none;
+  background:white;
+  padding:12px;
+  border-radius:10px;
+  margin:12px 0;
+  box-shadow:0 2px 5px rgba(0,0,0,.08);
+}
+
+input, select, textarea{
+  width:100%;
+  padding:10px;
+  margin:5px 0 10px;
+  box-sizing:border-box;
+}
+
+.small{
+  font-size:12px;
+  color:#666;
+}
 </style>
 </head>
 
@@ -37,116 +115,171 @@ Publica por $0.85 • Activo 5 días
 <button class="publish" onclick="toggleForm()">📩 Publicar anuncio</button>
 
 <div class="form-box" id="formBox">
-  <input id="title" placeholder="Título">
-  <input id="price" placeholder="Precio">
-  
-  <select id="category">
-    <option value="products">Productos</option>
-    <option value="services">Servicios</option>
-    <option value="restaurants">Restaurantes</option>
-  </select>
 
-  <textarea id="desc" placeholder="Descripción"></textarea>
-  <input id="phone" placeholder="WhatsApp (+505...)">
+<input id="title" placeholder="Título del anuncio">
 
-  <button onclick="startPayment()">Publicar ($0.85)</button>
+<input id="price" placeholder="Precio">
+
+<select id="category">
+  <option value="products">Productos</option>
+  <option value="services">Servicios</option>
+  <option value="restaurants">Restaurantes</option>
+</select>
+
+<textarea id="desc" placeholder="Descripción"></textarea>
+
+<input id="phone" placeholder="WhatsApp (+505...)">
+
+<div class="small">
+Después del pago tu anuncio se publicará automáticamente.
+</div>
+
+<button class="publish" onclick="startPayment()">Publicar ($0.85)</button>
+
 </div>
 
 <h3>🛍️ Publicaciones</h3>
-<div id="listings"></div>
+
+<div id="listings">
+<p>Cargando...</p>
+</div>
 
 </div>
 
 <script>
+/* ===========================
+   SUPABASE REAL PROJECT
+=========================== */
+const SUPABASE_URL = "https://mvcqoyhepcfoyutcvtrh.supabase.co";
 
-// ✅ YOUR REAL KEYS
-const SUPABASE_URL = "https://qcjqygkzrrgerhiogcxs.supabase.co";
-const SUPABASE_KEY = "sb_publishable_kjNq09DUC_SDKObBpDogEg_G16xmf8B";
+/* REPLACE THIS WITH YOUR REAL KEY */
+const SUPABASE_KEY = "PASTE_YOUR_NEW_PUBLISHABLE_KEY_HERE";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
-// UI
+/* ===========================
+   UI
+=========================== */
 function toggleForm(){
-  document.getElementById("formBox").style.display = "block";
+  const box = document.getElementById("formBox");
+  box.style.display = box.style.display === "block" ? "none" : "block";
 }
 
-// TEMP STORE BEFORE PAYMENT
-let pendingAd = null;
-
-// Step 1: Save data + go to payment
+/* ===========================
+   SAVE BEFORE PAYMENT
+=========================== */
 function startPayment(){
-  pendingAd = {
-    title: document.getElementById("title").value,
-    price: document.getElementById("price").value,
+
+  const pendingAd = {
+    title: document.getElementById("title").value.trim(),
+    price: document.getElementById("price").value.trim(),
     category: document.getElementById("category").value,
-    description: document.getElementById("desc").value,
-    phone: document.getElementById("phone").value
+    description: document.getElementById("desc").value.trim(),
+    phone: document.getElementById("phone").value.trim()
   };
 
   if(!pendingAd.title || !pendingAd.phone){
-    alert("Falta información");
+    alert("Falta título o WhatsApp");
     return;
   }
 
-  localStorage.setItem("pendingAd", JSON.stringify(pendingAd));
+  localStorage.setItem(
+    "pendingAd",
+    JSON.stringify(pendingAd)
+  );
 
-  window.location.href = "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
+  window.location.href =
+  "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
 }
 
-// After payment
+/* ===========================
+   AFTER PAYMENT RETURN
+=========================== */
 async function checkPaymentReturn(){
-  const urlParams = new URLSearchParams(window.location.search);
+
+  const urlParams = new URLSearchParams(
+    window.location.search
+  );
 
   if(urlParams.get("paid") === "true"){
-    const data = JSON.parse(localStorage.getItem("pendingAd"));
+
+    const data = JSON.parse(
+      localStorage.getItem("pendingAd")
+    );
+
     if(!data) return;
 
-    const expires = data.category === "restaurants"
+    const expires =
+      data.category === "restaurants"
       ? null
-      : new Date(Date.now() + 5*24*60*60*1000).toISOString();
+      : new Date(
+          Date.now() + 5*24*60*60*1000
+        ).toISOString();
 
-    const { error } = await supabase.from("listings").insert([{
-      title: data.title,
-      price: data.price,
-      category: data.category,
-      description: data.description,
-      phone: data.phone,
-      is_active: true,
-      expires_at: expires
-    }]);
+    const { error } = await supabase
+      .from("listings")
+      .insert([{
+        title: data.title,
+        price: data.price,
+        category: data.category,
+        description: data.description,
+        phone: data.phone,
+        is_active: true,
+        expires_at: expires
+      }]);
 
     if(error){
-      console.log("INSERT ERROR:", error);
+      console.log(error);
       alert("Error guardando anuncio");
       return;
     }
 
     localStorage.removeItem("pendingAd");
-    window.location.href = "/";
+
+    window.location.href = "index.html";
   }
 }
 
-// ✅ FIXED LOAD FUNCTION (no filter blocking data)
+/* ===========================
+   LOAD ADS
+=========================== */
 async function loadListings(){
+
+  const container =
+    document.getElementById("listings");
+
   const { data, error } = await supabase
     .from("listings")
-    .select("*");
+    .select("*")
+    .order("id", { ascending:false });
 
   console.log("DATA:", data);
   console.log("ERROR:", error);
 
-  const container = document.getElementById("listings");
+  if(error){
+    container.innerHTML =
+      "<p>Error cargando publicaciones</p>";
+    return;
+  }
+
   container.innerHTML = "";
 
   if(!data || data.length === 0){
-    container.innerHTML = "<p>No hay publicaciones todavía</p>";
+    container.innerHTML =
+      "<p>No hay publicaciones todavía</p>";
     return;
   }
 
   data.forEach(item => {
 
-    // hide expired only
-    if(item.expires_at && new Date(item.expires_at) < new Date()){
+    /* Hide expired */
+    if(
+      item.expires_at &&
+      new Date(item.expires_at) < new Date()
+    ){
       return;
     }
 
@@ -154,23 +287,36 @@ async function loadListings(){
       <div class="card">
         <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519">
         <div class="content">
-          <div>${item.title}</div>
-          <div class="price">${item.price}</div>
-          <button class="whatsapp" onclick="contact('${item.phone}')">Contactar</button>
+          <div><strong>${item.title}</strong></div>
+          <div>${item.description || ""}</div>
+          <div class="price">${item.price || ""}</div>
+          <button class="whatsapp"
+            onclick="contact('${item.phone}')">
+            Contactar
+          </button>
         </div>
       </div>
     `;
   });
 }
 
+/* ===========================
+   WHATSAPP
+=========================== */
 function contact(phone){
-  window.open(`https://wa.me/${phone}?text=Hola vi tu anuncio`, "_blank");
+  const clean = phone.replace(/\D/g,"");
+
+  window.open(
+    `https://wa.me/${clean}?text=Hola vi tu anuncio en Mercadito Nandaime`,
+    "_blank"
+  );
 }
 
-// INIT
+/* ===========================
+   INIT
+=========================== */
 checkPaymentReturn();
 loadListings();
-
 </script>
 
 </body>
