@@ -59,9 +59,9 @@ Publica por $0.85 • Activo 5 días
 
 <script>
 
-// 🔑 REPLACE WITH YOUR SUPABASE KEYS
-const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-const SUPABASE_KEY = "YOUR_ANON_KEY";
+// ✅ YOUR REAL KEYS
+const SUPABASE_URL = "https://qcjqygkzrrgerhiogcxs.supabase.co";
+const SUPABASE_KEY = "sb_publishable_kjNq09DUC_SDKObBpDogEg_G16xmf8B";
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -83,18 +83,21 @@ function startPayment(){
     phone: document.getElementById("phone").value
   };
 
+  if(!pendingAd.title || !pendingAd.phone){
+    alert("Falta información");
+    return;
+  }
+
   localStorage.setItem("pendingAd", JSON.stringify(pendingAd));
 
   window.location.href = "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
 }
 
-// Step 2: After payment redirect back to your site like:
-// yoursite.com/?paid=true
-
+// After payment
 async function checkPaymentReturn(){
   const urlParams = new URLSearchParams(window.location.search);
+
   if(urlParams.get("paid") === "true"){
-    
     const data = JSON.parse(localStorage.getItem("pendingAd"));
     if(!data) return;
 
@@ -102,7 +105,7 @@ async function checkPaymentReturn(){
       ? null
       : new Date(Date.now() + 5*24*60*60*1000).toISOString();
 
-    await supabase.from("listings").insert([{
+    const { error } = await supabase.from("listings").insert([{
       title: data.title,
       price: data.price,
       category: data.category,
@@ -112,6 +115,12 @@ async function checkPaymentReturn(){
       expires_at: expires
     }]);
 
+    if(error){
+      console.log("INSERT ERROR:", error);
+      alert("Error guardando anuncio");
+      return;
+    }
+
     localStorage.removeItem("pendingAd");
     window.location.href = "/";
   }
@@ -119,18 +128,29 @@ async function checkPaymentReturn(){
 
 // Load listings
 async function loadListings(){
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("listings")
     .select("*")
     .eq("is_active", true)
     .order("created_at", { ascending:false });
 
+  if(error){
+    console.log("LOAD ERROR:", error);
+    return;
+  }
+
+  console.log("DATA:", data);
+
   const container = document.getElementById("listings");
   container.innerHTML = "";
 
+  if(!data || data.length === 0){
+    container.innerHTML = "<p>No hay publicaciones todavía</p>";
+    return;
+  }
+
   data.forEach(item => {
 
-    // hide expired (extra safety)
     if(item.expires_at && new Date(item.expires_at) < new Date()){
       return;
     }
@@ -152,7 +172,7 @@ function contact(phone){
   window.open(`https://wa.me/${phone}?text=Hola vi tu anuncio`, "_blank");
 }
 
-// init
+// INIT
 checkPaymentReturn();
 loadListings();
 
