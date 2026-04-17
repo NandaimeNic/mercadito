@@ -27,10 +27,10 @@ async function init(){
 
 window.addEventListener("DOMContentLoaded", init);
 
-// --- AUTH (OTP email for now) ---
+// --- AUTH ---
 async function login(){
 
-  const email = prompt("Ingresa tu email para continuar:");
+  const email = prompt("Ingresa tu email:");
 
   if(!email) return;
 
@@ -43,10 +43,9 @@ async function login(){
     return;
   }
 
-  alert("Revisa tu email para continuar");
+  alert("Revisa tu correo para continuar");
 }
 
-// --- ENSURE AUTH ---
 async function requireAuth(){
 
   const { data } = await supabaseClient.auth.getUser();
@@ -101,7 +100,7 @@ async function checkPaymentReturn(){
 
     const { data } = await supabaseClient.auth.getUser();
     if(!data.user){
-      alert("Debes iniciar sesión primero");
+      alert("Debes iniciar sesión");
       return;
     }
 
@@ -160,7 +159,7 @@ const CATEGORY_LABELS = {
   otros: "📦 Otros"
 };
 
-// --- Load listings ---
+// --- Load listings (HORIZONTAL UI) ---
 async function loadListings(){
 
   const container = document.getElementById("listings");
@@ -171,7 +170,7 @@ async function loadListings(){
     .order("id", { ascending:false });
 
   if(error){
-    container.innerHTML = "Error";
+    container.innerHTML = "Error cargando";
     return;
   }
 
@@ -182,10 +181,8 @@ async function loadListings(){
     const items = data.filter(item => {
       if(item.category !== cat) return false;
 
-      if(
-        item.expires_at &&
-        new Date(item.expires_at) < new Date()
-      ){
+      if(item.expires_at &&
+         new Date(item.expires_at) < new Date()){
         return false;
       }
 
@@ -196,25 +193,32 @@ async function loadListings(){
 
     const section = document.createElement("div");
 
-    section.innerHTML =
-      `<div class="category-title">${CATEGORY_LABELS[cat]}</div>`;
+    section.innerHTML = `
+      <div class="category-title">${CATEGORY_LABELS[cat]}</div>
+      <div class="scroll"></div>
+    `;
 
-    let html = "";
+    const scroll = section.querySelector(".scroll");
 
     items.forEach(item => {
 
-      html += `
-        <div class="card" onclick='openDetail(${JSON.stringify(item)})'>
-          <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519">
-          <div class="content">
-            <div><strong>${item.title}</strong></div>
-            <div class="price">${item.price || ""}</div>
-          </div>
+      const card = document.createElement("div");
+      card.className = "card";
+
+      card.innerHTML = `
+        <div class="badge">Nuevo</div>
+        <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519">
+        <div class="content">
+          <div><strong>${item.title}</strong></div>
+          <div class="price">${item.price || ""}</div>
         </div>
       `;
+
+      card.onclick = () => openDetail(item);
+
+      scroll.appendChild(card);
     });
 
-    section.innerHTML += html;
     container.appendChild(section);
 
   });
@@ -229,7 +233,7 @@ function openDetail(item){
     <div class="modal-content">
       <h2>${item.title}</h2>
       <p>${item.description || ""}</p>
-      <div>${item.price || ""}</div>
+      <div class="price">${item.price || ""}</div>
       <button onclick="contact('${item.phone}')">WhatsApp</button>
       <button onclick="closeModal()">Cerrar</button>
     </div>
@@ -247,7 +251,7 @@ function contact(phone){
   const clean = phone.replace(/\D/g,"");
 
   window.open(
-    `https://wa.me/${clean}?text=Hola vi tu anuncio`,
+    `https://wa.me/${clean}?text=Hola vi tu anuncio en Mercadito Nandaime`,
     "_blank"
   );
 }
