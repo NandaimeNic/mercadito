@@ -1,6 +1,3 @@
-// DEBUG (remove later)
-alert("JS loaded");
-
 // --- Supabase config ---
 const SUPABASE_URL = "https://mvcqoyhepcfoyutcvtrh.supabase.co";
 const SUPABASE_KEY = "sb_publishable_H6BeHo4_ihvf0QHBSAL0yg_-RmyxNLF";
@@ -20,7 +17,7 @@ try {
 
 } catch (err) {
   console.error(err);
-  alert("Error cargando Supabase");
+  alert("Error cargando base de datos");
 }
 
 // --- Categories ---
@@ -86,7 +83,7 @@ async function checkPaymentReturn(){
     if(!data) return;
 
     const expires =
-      data.category === "restaurants"
+      data.category === "comida"
       ? null
       : new Date(Date.now() + 5*24*60*60*1000).toISOString();
 
@@ -113,10 +110,15 @@ async function checkPaymentReturn(){
   }
 }
 
-// --- Load listings (UPDATED with categories) ---
+// --- Load listings ---
 async function loadListings(){
 
   const container = document.getElementById("listings");
+
+  if(!supabaseClient){
+    container.innerHTML = "<p>Error conexión base de datos</p>";
+    return;
+  }
 
   try{
 
@@ -158,29 +160,25 @@ async function loadListings(){
 
       const section = document.createElement("div");
 
-      // ✅ YOUR REQUIRED LINE
-      section.innerHTML = `
-        <div class="category-title">${CATEGORY_LABELS[cat]}</div>
-      `;
+      section.innerHTML =
+        `<div class="category-title">${CATEGORY_LABELS[cat]}</div>`;
+
+      let cardsHTML = "";
 
       items.forEach(item => {
 
-        section.innerHTML += `
-          <div class="card">
+        cardsHTML += `
+          <div class="card" onclick='openDetail(${JSON.stringify(item)})'>
             <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519">
             <div class="content">
               <div><strong>${item.title}</strong></div>
-              <div>${item.description || ""}</div>
               <div class="price">${item.price || ""}</div>
-              <button class="whatsapp"
-                onclick="contact('${item.phone}')">
-                Contactar
-              </button>
             </div>
           </div>
         `;
       });
 
+      section.innerHTML += cardsHTML;
       container.appendChild(section);
 
     });
@@ -189,6 +187,29 @@ async function loadListings(){
     container.innerHTML =
       "<p>Error JS: " + err.message + "</p>";
   }
+}
+
+// --- Detail modal ---
+function openDetail(item){
+
+  const modal = document.getElementById("detailModal");
+
+  modal.innerHTML = `
+    <div class="modal-content">
+      <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519">
+      <h2>${item.title}</h2>
+      <p>${item.description || ""}</p>
+      <div class="price">${item.price || ""}</div>
+      <button onclick="contact('${item.phone}')">Contactar por WhatsApp</button>
+      <button onclick="closeModal()">Cerrar</button>
+    </div>
+  `;
+
+  modal.style.display = "flex";
+}
+
+function closeModal(){
+  document.getElementById("detailModal").style.display = "none";
 }
 
 // --- WhatsApp ---
