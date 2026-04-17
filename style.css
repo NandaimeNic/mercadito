@@ -191,3 +191,12 @@ header{
   border-radius:10px;
   font-weight:bold;
 }
+
+/* smoother look */
+button{
+  cursor:pointer;
+}
+
+input, textarea, select{
+  outline:none;
+}
