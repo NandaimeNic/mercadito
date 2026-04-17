@@ -5,49 +5,78 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mercadito Nandaime</title>
 
-<!-- Supabase CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body{
-  font-family:Arial,sans-serif;
   margin:0;
-  background:#f2f2f2;
+  background:#000;
+  color:#E6C76B;
+  font-family:Arial,sans-serif;
 }
 
 header{
-  background:#128C7E;
-  color:white;
-  padding:15px;
+  background:#000;
+  color:#D4AF37;
+  padding:18px;
   text-align:center;
-  font-weight:bold;
   font-size:22px;
+  font-weight:bold;
+  border-bottom:1px solid rgba(212,175,55,0.3);
 }
 
 .sub{
   text-align:center;
   padding:8px;
-  font-size:14px;
+  font-size:13px;
+  color:#bfa14a;
 }
 
 .container{
-  padding:10px;
+  padding:12px;
   max-width:700px;
   margin:auto;
 }
 
-.card{
-  background:white;
-  margin-bottom:12px;
-  border-radius:10px;
-  overflow:hidden;
-  box-shadow:0 2px 5px rgba(0,0,0,.1);
+button{
+  width:100%;
+  padding:12px;
+  margin:10px 0;
+  border-radius:8px;
+  border:1px solid rgba(212,175,55,0.3);
+  background:#0A0A0A;
+  color:#D4AF37;
+  font-size:15px;
 }
 
-img{
+.publish{
+  background:#D4AF37;
+  color:#000;
+  font-weight:bold;
+}
+
+.category-title{
+  margin-top:25px;
+  font-size:16px;
+  font-weight:bold;
+  color:#D4AF37;
+  border-bottom:1px solid rgba(212,175,55,0.2);
+  padding-bottom:5px;
+}
+
+.card{
+  background:#0A0A0A;
+  margin-top:12px;
+  border-radius:10px;
+  overflow:hidden;
+  border:1px solid rgba(212,175,55,0.15);
+}
+
+.card img{
   width:100%;
   height:160px;
   object-fit:cover;
+  filter:brightness(0.9);
 }
 
 .content{
@@ -55,49 +84,32 @@ img{
 }
 
 .price{
-  color:green;
+  color:#D4AF37;
   font-weight:bold;
   margin-top:5px;
 }
 
-button{
-  width:100%;
-  padding:10px;
-  margin-top:8px;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
-}
-
 .whatsapp{
-  background:#25D366;
-  color:white;
-}
-
-.publish{
-  background:#ff9800;
-  color:white;
-  font-weight:bold;
+  background:#111;
+  color:#D4AF37;
 }
 
 .form-box{
   display:none;
-  background:white;
+  background:#0A0A0A;
   padding:12px;
   border-radius:10px;
   margin:12px 0;
+  border:1px solid rgba(212,175,55,0.2);
 }
 
 input, select, textarea{
   width:100%;
   padding:10px;
   margin:5px 0 10px;
-  box-sizing:border-box;
-}
-
-.small{
-  font-size:12px;
-  color:#666;
+  background:#000;
+  color:#E6C76B;
+  border:1px solid rgba(212,175,55,0.2);
 }
 </style>
 </head>
@@ -107,45 +119,40 @@ input, select, textarea{
 <header>Mercadito Nandaime</header>
 
 <div class="sub">
-Publica por $0.85 • Activo 5 días
+Compra y vende en Nandaime
 </div>
 
 <div class="container">
 
-<button class="publish" onclick="toggleForm()">📩 Publicar anuncio</button>
+<button class="publish" onclick="toggleForm()">Publicar anuncio</button>
 
 <div class="form-box" id="formBox">
 
-<input id="title" placeholder="Título del anuncio">
+<input id="title" placeholder="Título">
 <input id="price" placeholder="Precio">
 
 <select id="category">
-<option value="products">Productos</option>
-<option value="services">Servicios</option>
-<option value="restaurants">Restaurantes</option>
+<option value="ropa">Ropa</option>
+<option value="electronica">Electrónica</option>
+<option value="reparaciones">Reparaciones</option>
+<option value="hogar">Hogar</option>
+<option value="vehiculos">Vehículos</option>
+<option value="comida">Comida</option>
+<option value="servicios">Servicios</option>
+<option value="otros">Otros</option>
 </select>
 
 <textarea id="desc" placeholder="Descripción"></textarea>
-
 <input id="phone" placeholder="WhatsApp (+505...)">
 
-<div class="small">
-Después del pago tu anuncio se publicará automáticamente.
-</div>
-
-<button class="publish" onclick="startPayment()">Publicar ($0.85)</button>
+<button class="publish" onclick="startPayment()">Publicar</button>
 
 </div>
 
-<h3>🛍️ Publicaciones</h3>
-
-<div id="listings">
-<p>Cargando...</p>
-</div>
+<div id="listings"></div>
 
 </div>
 
-<!-- IMPORTANT: fixed path + defer -->
 <script src="./main.js" defer></script>
 
 </body>
