@@ -85,7 +85,6 @@ button{
   padding:12px;
   border-radius:10px;
   margin:12px 0;
-  box-shadow:0 2px 5px rgba(0,0,0,.08);
 }
 
 input, select, textarea{
@@ -117,13 +116,12 @@ Publica por $0.85 • Activo 5 días
 <div class="form-box" id="formBox">
 
 <input id="title" placeholder="Título del anuncio">
-
 <input id="price" placeholder="Precio">
 
 <select id="category">
-  <option value="products">Productos</option>
-  <option value="services">Servicios</option>
-  <option value="restaurants">Restaurantes</option>
+<option value="products">Productos</option>
+<option value="services">Servicios</option>
+<option value="restaurants">Restaurantes</option>
 </select>
 
 <textarea id="desc" placeholder="Descripción"></textarea>
@@ -146,176 +144,7 @@ Después del pago tu anuncio se publicará automáticamente.
 
 </div>
 
-<script>
-/* ===========================
-   SUPABASE REAL PROJECT
-=========================== */
-const SUPABASE_URL = "https://mvcqoyhepcfoyutcvtrh.supabase.co";
-
-const SUPABASE_KEY = "sb_publishable_H6BeHo4_ihvf0QHBSAL0yg_-RmyxNLF";
-
-const supabase = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
-
-/* ===========================
-   UI
-=========================== */
-function toggleForm(){
-  const box = document.getElementById("formBox");
-  box.style.display = box.style.display === "block" ? "none" : "block";
-}
-
-/* ===========================
-   SAVE BEFORE PAYMENT
-=========================== */
-function startPayment(){
-
-  const pendingAd = {
-    title: document.getElementById("title").value.trim(),
-    price: document.getElementById("price").value.trim(),
-    category: document.getElementById("category").value,
-    description: document.getElementById("desc").value.trim(),
-    phone: document.getElementById("phone").value.trim()
-  };
-
-  if(!pendingAd.title || !pendingAd.phone){
-    alert("Falta título o WhatsApp");
-    return;
-  }
-
-  localStorage.setItem(
-    "pendingAd",
-    JSON.stringify(pendingAd)
-  );
-
-  window.location.href =
-  "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
-}
-
-/* ===========================
-   AFTER PAYMENT RETURN
-=========================== */
-async function checkPaymentReturn(){
-
-  const urlParams = new URLSearchParams(
-    window.location.search
-  );
-
-  if(urlParams.get("paid") === "true"){
-
-    const data = JSON.parse(
-      localStorage.getItem("pendingAd")
-    );
-
-    if(!data) return;
-
-    const expires =
-      data.category === "restaurants"
-      ? null
-      : new Date(
-          Date.now() + 5*24*60*60*1000
-        ).toISOString();
-
-    const { error } = await supabase
-      .from("listings")
-      .insert([{
-        title: data.title,
-        price: data.price,
-        category: data.category,
-        description: data.description,
-        phone: data.phone,
-        is_active: true,
-        expires_at: expires
-      }]);
-
-    if(error){
-      console.log(error);
-      alert("Error guardando anuncio");
-      return;
-    }
-
-    localStorage.removeItem("pendingAd");
-
-    window.location.href = "index.html";
-  }
-}
-
-/* ===========================
-   LOAD ADS
-=========================== */
-async function loadListings(){
-
-  const container =
-    document.getElementById("listings");
-
-  const { data, error } = await supabase
-    .from("listings")
-    .select("*")
-    .order("id", { ascending:false });
-
-  console.log("DATA:", data);
-  console.log("ERROR:", error);
-
-  if(error){
-    container.innerHTML =
-      "<p>Error cargando publicaciones</p>";
-    return;
-  }
-
-  container.innerHTML = "";
-
-  if(!data || data.length === 0){
-    container.innerHTML =
-      "<p>No hay publicaciones todavía</p>";
-    return;
-  }
-
-  data.forEach(item => {
-
-    if(
-      item.expires_at &&
-      new Date(item.expires_at) < new Date()
-    ){
-      return;
-    }
-
-    container.innerHTML += `
-      <div class="card">
-        <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519">
-        <div class="content">
-          <div><strong>${item.title}</strong></div>
-          <div>${item.description || ""}</div>
-          <div class="price">${item.price || ""}</div>
-          <button class="whatsapp"
-            onclick="contact('${item.phone}')">
-            Contactar
-          </button>
-        </div>
-      </div>
-    `;
-  });
-}
-
-/* ===========================
-   WHATSAPP
-=========================== */
-function contact(phone){
-  const clean = phone.replace(/\D/g,"");
-
-  window.open(
-    `https://wa.me/${clean}?text=Hola vi tu anuncio en Mercadito Nandaime`,
-    "_blank"
-  );
-}
-
-/* ===========================
-   INIT
-=========================== */
-checkPaymentReturn();
-loadListings();
-</script>
+<script src="main.js?v=2"></script>
 
 </body>
 </html>
