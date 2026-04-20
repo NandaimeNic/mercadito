@@ -1,4 +1,3 @@
-
 // --- Supabase config ---
 const SUPABASE_URL = "https://mvcqoyhepcfoyutcvtrh.supabase.co";
 const SUPABASE_KEY = "sb_publishable_H6BeHo4_ihvf0QHBSAL0yg_-RmyxNLF";
@@ -64,12 +63,13 @@ function toggleForm(){
     box.style.display === "block" ? "none" : "block";
 }
 
-// --- IMAGE UPLOAD ---
+// --- IMAGE UPLOAD (FIXED) ---
 async function uploadImage(file){
 
-  if(!file) return null;
+  if(!file) return "";
 
-  const fileName = Date.now() + "_" + file.name;
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Date.now()}.${fileExt}`;
 
   const { error } = await supabaseClient
     .storage
@@ -77,8 +77,9 @@ async function uploadImage(file){
     .upload(fileName, file);
 
   if(error){
+    alert("Error subiendo imagen");
     console.error(error);
-    return null;
+    return "";
   }
 
   const { data } = supabaseClient
@@ -140,7 +141,7 @@ async function checkPaymentReturn(){
       : new Date(Date.now() + 5*24*60*60*1000).toISOString();
 
     const { error } = await supabaseClient
-      .from("listings")
+      .from("Listings")
       .insert([{
         title: ad.title,
         price: ad.price,
@@ -187,12 +188,13 @@ async function loadListings(){
   const container = document.getElementById("listings");
 
   const { data, error } = await supabaseClient
-    .from("listings")
+    .from("Listings")
     .select("*")
     .order("id",{ascending:false});
 
   if(error){
     container.innerHTML = "Error";
+    console.error(error);
     return;
   }
 
