@@ -63,7 +63,7 @@ function toggleForm(){
     box.style.display === "block" ? "none" : "block";
 }
 
-// --- IMAGE UPLOAD (FIXED) ---
+// --- IMAGE UPLOAD ---
 async function uploadImage(file){
 
   if(!file) return "";
@@ -141,7 +141,7 @@ async function checkPaymentReturn(){
       : new Date(Date.now() + 5*24*60*60*1000).toISOString();
 
     const { error } = await supabaseClient
-      .from("Listings")
+      .from('"Listings"')
       .insert([{
         title: ad.title,
         price: ad.price,
@@ -188,7 +188,7 @@ async function loadListings(){
   const container = document.getElementById("listings");
 
   const { data, error } = await supabaseClient
-    .from("Listings")
+    .from('"Listings"')
     .select("*")
     .order("id",{ascending:false});
 
