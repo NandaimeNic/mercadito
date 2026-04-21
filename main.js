@@ -1,6 +1,6 @@
 // --- Supabase config ---
-const SUPABASE_URL = "https://mvcqoyhepcfoyutcvtrh.supabase.co";
-const SUPABASE_KEY = "PASTE_YOUR_ANON_KEY_HERE"; // ← replace with eyJhbGciOiJIUzI1NiIs...
+const SUPABASE_URL = "https://pwcmwmmerrclkjzgnjgt.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3Y213bW1lcnJjbGtqemduamd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTI0MDgsImV4cCI6MjA5MjI4ODQwOH0.OV-D2p2RmSBxk2td-PkZtellr9bTCfhcpa5ZERayEeo";
 
 let supabaseClient;
 let currentUser = null;
@@ -18,8 +18,13 @@ async function init(){
     SUPABASE_KEY
   );
 
-  const { data } = await supabaseClient.auth.getUser();
-  currentUser = data.user;
+  try {
+    const { data, error } = await supabaseClient.auth.getUser();
+    if (error) throw error;
+    currentUser = data.user;
+  } catch (err) {
+    console.error("Auth error:", err);
+  }
 
   checkPaymentReturn();
   loadListings();
@@ -37,10 +42,11 @@ async function login(){
 
   if(error){
     alert("Error enviando código");
+    console.error(error);
     return;
   }
 
-  alert("Revisa tu correo");
+  alert("Revisa tu correo y vuelve a la app");
 }
 
 async function requireAuth(){
@@ -69,7 +75,7 @@ async function uploadImage(file){
   if(!file) return "";
 
   const fileExt = file.name.split('.').pop();
-  const fileName = `${Date.now()}.${fileExt}`;
+  const fileName = `${Date.now()}-${Math.floor(Math.random()*10000)}.${fileExt}`;
 
   const { error } = await supabaseClient
     .storage
@@ -127,8 +133,9 @@ async function checkPaymentReturn(){
   if(urlParams.get("paid") === "true"){
 
     const { data } = await supabaseClient.auth.getUser();
+
     if(!data.user){
-      alert("Debes iniciar sesión");
+      alert("Debes iniciar sesión después del pago");
       return;
     }
 
@@ -141,7 +148,7 @@ async function checkPaymentReturn(){
       : new Date(Date.now() + 5*24*60*60*1000).toISOString();
 
     const { error } = await supabaseClient
-      .from('"Listings"')
+      .from('listings')
       .insert([{
         title: ad.title,
         price: ad.price,
@@ -170,17 +177,42 @@ async function loadListings(){
 
   const container = document.getElementById("listings");
 
-  const { data, error } = await supabaseClient
-    .from('"Listings"')
-    .select("*")
-    .order("id",{ascending:false});
+  try {
+    const { data, error } = await supabaseClient
+      .from('listings')
+      .select("*")
+      .order("id", { ascending: false });
 
-  if(error){
-    alert("Error loading listings: " + error.message);
-    console.error(error);
-    container.innerHTML = "Error: " + error.message;
-    return;
+    if(error) throw error;
+
+    container.innerHTML = "";
+
+    if(!data || data.length === 0){
+      container.innerHTML = "<p style='color:#D4AF37'>No hay anuncios todavía</p>";
+      return;
+    }
+
+    data.forEach(item => {
+      const div = document.createElement("div");
+      div.style.marginBottom = "16px";
+      div.style.borderBottom = "1px solid #333";
+      div.style.paddingBottom = "10px";
+
+      div.innerHTML = `
+        <img src="${item.image_url || ''}" style="width:100%;border-radius:8px;margin-bottom:8px;" />
+        <h3 style="color:#D4AF37">${item.title || ''}</h3>
+        <p style="color:#fff">${item.price || ''}</p>
+        <a href="https://wa.me/${item.phone}" target="_blank" style="color:#25D366">
+          WhatsApp
+        </a>
+      `;
+
+      container.appendChild(div);
+    });
+
+  } catch (err) {
+    alert("Error cargando anuncios");
+    console.error(err);
+    container.innerHTML = "Error cargando datos";
   }
-
-  container.innerHTML = "";
 }
