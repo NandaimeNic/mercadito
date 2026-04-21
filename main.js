@@ -1,8 +1,8 @@
 // =============================
-// SUPABASE CONFIG
+// CONFIG
 // =============================
 const SUPABASE_URL = "https://pwcmwmmerrclkjzgnjgt.supabase.co";
-const SUPABASE_KEY = "YOUR_KEY_HERE";
+const SUPABASE_KEY = "PASTE_YOUR_REAL_KEY";
 
 let supabase;
 let currentUser = null;
@@ -13,17 +13,11 @@ let currentProfile = null;
 // =============================
 async function init() {
 
-  if (!window.supabase) {
-    alert("Error cargando sistema");
-    return;
-  }
-
   supabase = window.supabase.createClient(
     SUPABASE_URL,
     SUPABASE_KEY
   );
 
-  // Auth state listener
   supabase.auth.onAuthStateChange(async (event, session) => {
     currentUser = session?.user || null;
 
@@ -45,7 +39,6 @@ window.addEventListener("DOMContentLoaded", init);
 // =============================
 async function restoreSession() {
   const { data: { session } } = await supabase.auth.getSession();
-
   currentUser = session?.user || null;
 
   if (currentUser) {
@@ -58,19 +51,13 @@ async function restoreSession() {
 // =============================
 async function loadProfile() {
 
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", currentUser.id)
     .single();
 
-  if (error) {
-    console.error("Profile error:", error);
-    currentProfile = { role: "user" };
-    return;
-  }
-
-  currentProfile = data;
+  currentProfile = data || { role: "user" };
 }
 
 function isAdmin() {
@@ -80,21 +67,6 @@ function isAdmin() {
 // =============================
 // AUTH
 // =============================
-async function signupFromUI() {
-
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password
-  });
-
-  if (error) return alert(error.message);
-
-  alert("Cuenta creada. Inicia sesión.");
-}
-
 async function loginFromUI() {
 
   const email = document.getElementById("email").value;
@@ -110,6 +82,21 @@ async function loginFromUI() {
   closeAuthModal();
 }
 
+async function signupFromUI() {
+
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { error } = await supabase.auth.signUp({
+    email,
+    password
+  });
+
+  if (error) return alert(error.message);
+
+  alert("Cuenta creada");
+}
+
 async function logout() {
   await supabase.auth.signOut();
   currentUser = null;
@@ -117,8 +104,13 @@ async function logout() {
 }
 
 // =============================
-// AUTH UI
+// UI HELPERS
 // =============================
+function toggleAuthUI() {
+  const m = document.getElementById("authModal");
+  m.style.display = m.style.display === "flex" ? "none" : "flex";
+}
+
 function openAuthModal() {
   document.getElementById("authModal").style.display = "flex";
 }
@@ -127,16 +119,21 @@ function closeAuthModal() {
   document.getElementById("authModal").style.display = "none";
 }
 
+function toggleForm() {
+  const box = document.getElementById("formBox");
+  box.style.display = box.style.display === "block" ? "none" : "block";
+}
+
 // =============================
-// PENDING LISTING STATE
+// STORAGE STATE
 // =============================
 function savePendingListing(data) {
   localStorage.setItem("pendingListing", JSON.stringify(data));
 }
 
 function loadPendingListing() {
-  const data = localStorage.getItem("pendingListing");
-  return data ? JSON.parse(data) : null;
+  const d = localStorage.getItem("pendingListing");
+  return d ? JSON.parse(d) : null;
 }
 
 function clearPendingListing() {
@@ -144,41 +141,39 @@ function clearPendingListing() {
 }
 
 // =============================
-// IMAGE UPLOAD
+// IMAGE
 // =============================
 async function uploadImage(file) {
 
   if (!file) return "";
 
-  const fileExt = file.name.split(".").pop();
-  const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+  const name = Date.now() + "-" + file.name;
 
   const { error } = await supabase
     .storage
     .from("listings")
-    .upload(fileName, file);
+    .upload(name, file);
 
   if (error) {
     console.error(error);
-    alert("Error subiendo imagen");
     return "";
   }
 
   const { data } = supabase
     .storage
     .from("listings")
-    .getPublicUrl(fileName);
+    .getPublicUrl(name);
 
   return data.publicUrl;
 }
 
 // =============================
-// CREATE LISTING ENTRY POINT
+// ENTRY POINT (HTML CALLS THIS)
 // =============================
-async function startPostFlow() {
+async function startPayment() {
 
   const file = document.getElementById("imageInput").files[0];
-  const imageUrl = await uploadImage(file);
+  const image = await uploadImage(file);
 
   const listing = {
     title: document.getElementById("title").value.trim(),
@@ -186,7 +181,7 @@ async function startPostFlow() {
     category: document.getElementById("category").value,
     description: document.getElementById("desc").value.trim(),
     phone: document.getElementById("phone").value.trim(),
-    image_url: imageUrl
+    image_url: image
   };
 
   if (!listing.title || !listing.phone) {
@@ -198,32 +193,24 @@ async function startPostFlow() {
 }
 
 // =============================
-// CORE POST LOGIC
+// CORE LOGIC
 // =============================
-async function handlePost(listingData) {
+async function handlePost(data) {
 
   if (!currentUser) {
-    savePendingListing(listingData);
+    savePendingListing(data);
     openAuthModal();
     return;
   }
 
   if (isAdmin()) {
-    await insertListing(listingData);
+    await insertListing(data);
     clearPendingListing();
     alert("Publicado (admin)");
     return;
   }
 
-  // NORMAL USER → PAYMENT
-  savePendingListing(listingData);
-  startPaymentFlow();
-}
-
-// =============================
-// PAYMENT
-// =============================
-function startPaymentFlow() {
+  savePendingListing(data);
   window.location.href =
     "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
 }
@@ -232,12 +219,8 @@ function startPaymentFlow() {
 // AFTER LOGIN
 // =============================
 async function afterLogin() {
-
   const pending = loadPendingListing();
-
-  if (!pending) return;
-
-  await handlePost(pending);
+  if (pending) await handlePost(pending);
 }
 
 // =============================
@@ -251,39 +234,27 @@ async function handlePaymentReturn() {
 
   const pending = loadPendingListing();
 
-  if (!pending) return;
-
-  if (!currentUser) {
-    openAuthModal();
-    return;
-  }
+  if (!pending || !currentUser) return;
 
   await insertListing(pending);
-
   clearPendingListing();
 
-  alert("Publicado correctamente");
+  alert("Publicado");
 
   window.history.replaceState({}, document.title, "/");
 }
 
 // =============================
-// INSERT LISTING
+// INSERT
 // =============================
 async function insertListing(data) {
-
-  const expires =
-    data.category === "comida"
-      ? null
-      : new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
 
   const { error } = await supabase
     .from("listings")
     .insert([{
       ...data,
       user_id: currentUser.id,
-      is_active: true,
-      expires_at: expires
+      is_active: true
     }]);
 
   if (error) {
@@ -297,64 +268,37 @@ async function insertListing(data) {
 // =============================
 async function deleteListing(id) {
 
-  if (!confirm("¿Eliminar anuncio?")) return;
-
   const { error } = await supabase
     .from("listings")
     .delete()
     .eq("id", id);
 
-  if (error) {
-    console.error(error);
-    alert("Error");
-    return;
-  }
-
-  loadListings();
+  if (error) alert("Error");
+  else loadListings();
 }
 
 // =============================
-// LISTINGS UI
+// LOAD LISTINGS
 // =============================
-function timeAgo(dateString) {
-
-  if (!dateString) return "";
-
-  const diff = Math.floor((new Date() - new Date(dateString)) / 1000);
-  const hours = Math.floor(diff / 3600);
-
-  if (hours < 1) return "Hace minutos";
-  if (hours < 24) return `Hace ${hours}h`;
-
-  const days = Math.floor(hours / 24);
-  return `Hace ${days}d`;
-}
-
 async function loadListings() {
 
-  const container = document.getElementById("listings");
+  const el = document.getElementById("listings");
 
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("listings")
     .select("*")
     .order("id", { ascending: false });
 
-  if (error) {
-    console.error(error);
-    container.innerHTML = "Error cargando";
-    return;
-  }
+  el.innerHTML = "";
 
-  container.innerHTML = "";
-
-  if (!data.length) {
-    container.innerHTML = "<p>No hay anuncios</p>";
+  if (!data || !data.length) {
+    el.innerHTML = "No hay anuncios";
     return;
   }
 
   data.forEach(item => {
 
-    const isOwner = currentUser && item.user_id === currentUser.id;
+    const owner = currentUser && item.user_id === currentUser.id;
 
     const div = document.createElement("div");
 
@@ -362,13 +306,21 @@ async function loadListings() {
       ${item.image_url ? `<img src="${item.image_url}" style="width:100%">` : ""}
       <h3>${item.title}</h3>
       <p>${item.price}</p>
-      <p>${timeAgo(item.created_at)}</p>
-
       <a href="https://wa.me/${item.phone}" target="_blank">WhatsApp</a>
-
-      ${isOwner ? `<button onclick="deleteListing('${item.id}')">Eliminar</button>` : ""}
+      ${owner ? `<button onclick="deleteListing('${item.id}')">Eliminar</button>` : ""}
     `;
 
-    container.appendChild(div);
+    el.appendChild(div);
   });
 }
+
+// =============================
+// GLOBAL BINDINGS (CRITICAL)
+// =============================
+window.toggleAuthUI = toggleAuthUI;
+window.loginFromUI = loginFromUI;
+window.signupFromUI = signupFromUI;
+window.logout = logout;
+window.toggleForm = toggleForm;
+window.startPayment = startPayment;
+window.deleteListing = deleteListing;
