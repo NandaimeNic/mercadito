@@ -18,16 +18,14 @@ async function init(){
     SUPABASE_KEY
   );
 
-  // Restore session automatically
+  // Restore session
   supabaseClient.auth.onAuthStateChange((event, session) => {
     currentUser = session?.user || null;
     console.log("Auth state:", event, currentUser?.id);
   });
 
   await loadUser();
-
   await resumePendingAd();
-
   await checkPaymentReturn();
 
   loadListings();
@@ -77,6 +75,8 @@ async function login(email, password){
 
   alert("Sesión iniciada");
 
+  toggleAuthUI(); // close modal
+
   await resumePendingAd();
 
   loadListings();
@@ -88,11 +88,23 @@ async function logout(){
   alert("Sesión cerrada");
 }
 
-// --- AUTH UI HOOK ---
+// --- AUTH UI ---
+function toggleAuthUI(){
+  const modal = document.getElementById("authModal");
+  modal.style.display =
+    modal.style.display === "flex" ? "none" : "flex";
+}
+
 function loginFromUI(){
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
   login(email, password);
+}
+
+function signupFromUI(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  signUp(email, password);
 }
 
 // --- REQUIRE AUTH ---
@@ -104,7 +116,7 @@ async function requireAuth(){
     return true;
   }
 
-  toggleAuthUI(); // you must implement modal
+  toggleAuthUI();
   return false;
 }
 
@@ -210,7 +222,6 @@ async function startPayment(){
 
   localStorage.setItem("pendingAd", JSON.stringify(pendingAd));
 
-  // 🔥 ADMIN BYPASS
   const admin = await isAdmin();
 
   if(admin){
@@ -218,23 +229,18 @@ async function startPayment(){
     return;
   }
 
-  // Normal user → go to payment
   window.location.href =
     "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
 }
 
-// --- RESUME FLOW AFTER LOGIN ---
+// --- RESUME FLOW ---
 async function resumePendingAd(){
 
   const ad = JSON.parse(localStorage.getItem("pendingAd"));
 
-  if(!ad) return;
+  if(!ad || !currentUser) return;
 
-  if(!currentUser) return;
-
-  console.log("Resuming pending ad...");
-
-  // Optional: auto-continue to payment
+  console.log("Pending ad exists");
 }
 
 // --- PAYMENT RETURN ---
