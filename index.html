@@ -6,7 +6,7 @@
 
 <title>Mercadito Nandaime</title>
 
-<link rel="stylesheet" href="/style.css?v=4">
+<link rel="stylesheet" href="/style.css?v=5">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -22,6 +22,12 @@ Compra y vende en Nandaime
 
 <div class="container">
 
+<!-- 🔐 AUTH BUTTONS -->
+<div style="display:flex; gap:10px; margin-bottom:15px;">
+  <button onclick="toggleAuthUI()">Login</button>
+  <button onclick="logout()">Logout</button>
+</div>
+
 <button class="publish" onclick="toggleForm()">Publicar anuncio</button>
 
 <div class="search-box">
@@ -29,6 +35,7 @@ Compra y vende en Nandaime
   <button>Buscar</button>
 </div>
 
+<!-- 📦 FORM -->
 <div class="form-box" id="formBox">
 
 <input id="title" placeholder="Título">
@@ -55,13 +62,57 @@ Compra y vende en Nandaime
 
 </div>
 
+<!-- 📄 LISTINGS -->
 <div id="listings"></div>
+
+</div>
+
+<!-- 🔐 AUTH MODAL (NEW SYSTEM) -->
+<div id="authModal" style="
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.8);
+  justify-content:center;
+  align-items:center;
+  z-index:999;
+">
+
+  <div style="
+    background:#111;
+    padding:20px;
+    border-radius:10px;
+    width:90%;
+    max-width:350px;
+  ">
+
+    <h3 style="color:#D4AF37;">Cuenta</h3>
+
+    <input id="email" placeholder="Email" style="width:100%; margin-bottom:10px;">
+    <input id="password" type="password" placeholder="Password" style="width:100%; margin-bottom:10px;">
+
+    <button onclick="loginFromUI()" style="width:100%; margin-bottom:10px;">
+      Login
+    </button>
+
+    <button onclick="signupFromUI()" style="width:100%; margin-bottom:10px;">
+      Sign up
+    </button>
+
+    <button onclick="toggleAuthUI()" style="width:100%;">
+      Cerrar
+    </button>
+
+  </div>
 
 </div>
 
 <div id="detailModal"></div>
 
-<script src="/main.js?v=4" defer></script>
+<script src="/main.js?v=5" defer></script>
 
 </body>
 </html>
