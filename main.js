@@ -1,6 +1,6 @@
 // --- Supabase config ---
 const SUPABASE_URL = "https://pwcmwmmerrclkjzgnjgt.supabase.co";
-const SUPABASE_KEY = "YOUR_KEY_HERE";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3Y213bW1lcnJjbGtqemduamd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTI0MDgsImV4cCI6MjA5MjI4ODQwOH0.OV-D2p2RmSBxk2td-PkZtellr9bTCfhcpa5ZERayEeo";
 
 let supabaseClient;
 let currentUser = null;
@@ -226,7 +226,11 @@ async function loadListings(){
       .select("*")
       .order("id", { ascending: false });
 
-    if(error) throw error;
+    if(error){
+      console.error("Supabase error:", error);
+      alert(error.message);
+      throw error;
+    }
 
     container.innerHTML = "";
 
@@ -275,7 +279,6 @@ async function loadListings(){
     });
 
   } catch (err) {
-    alert("Error cargando anuncios");
     console.error(err);
     container.innerHTML = "Error cargando datos";
   }
