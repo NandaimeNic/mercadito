@@ -18,15 +18,15 @@ async function init(){
     SUPABASE_KEY
   );
 
-  // 🔴 CRITICAL: Listen for session restore
+  // Restore session automatically
   supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (session?.user) {
-      currentUser = session.user;
-      console.log("User restored:", currentUser.id);
-    }
+    currentUser = session?.user || null;
+    console.log("Auth state:", event, currentUser?.id);
   });
 
   await loadUser();
+
+  await resumePendingAd();
 
   await checkPaymentReturn();
 
@@ -45,27 +45,57 @@ async function loadUser(){
   }
 }
 
-async function login(){
+// --- AUTH SYSTEM ---
+async function signUp(email, password){
 
-  const email = prompt("Ingresa tu email:");
-  if(!email) return;
-
-  const { error } = await supabaseClient.auth.signInWithOtp({
+  const { error } = await supabaseClient.auth.signUp({
     email,
-    options: {
-      emailRedirectTo: window.location.origin
-    }
+    password
   });
 
   if(error){
-    alert("Error enviando código");
-    console.error(error);
+    alert(error.message);
     return;
   }
 
-  alert("Revisa tu correo y vuelve a la app");
+  alert("Cuenta creada. Ahora inicia sesión.");
 }
 
+async function login(email, password){
+
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if(error){
+    alert(error.message);
+    return;
+  }
+
+  currentUser = data.user;
+
+  alert("Sesión iniciada");
+
+  await resumePendingAd();
+
+  loadListings();
+}
+
+async function logout(){
+  await supabaseClient.auth.signOut();
+  currentUser = null;
+  alert("Sesión cerrada");
+}
+
+// --- AUTH UI HOOK ---
+function loginFromUI(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  login(email, password);
+}
+
+// --- REQUIRE AUTH ---
 async function requireAuth(){
 
   await loadUser();
@@ -74,8 +104,27 @@ async function requireAuth(){
     return true;
   }
 
-  await login();
+  toggleAuthUI(); // you must implement modal
   return false;
+}
+
+// --- ADMIN CHECK ---
+async function isAdmin(){
+
+  if(!currentUser) return false;
+
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('role')
+    .eq('id', currentUser.id)
+    .single();
+
+  if(error){
+    console.error(error);
+    return false;
+  }
+
+  return data?.role === 'admin';
 }
 
 // --- Toggle form ---
@@ -112,7 +161,31 @@ async function uploadImage(file){
   return data.publicUrl;
 }
 
-// --- PAYMENT START ---
+// --- CREATE LISTING (ADMIN DIRECT) ---
+async function createListingDirect(ad){
+
+  const { error } = await supabaseClient
+    .from('listings')
+    .insert([{
+      ...ad,
+      user_id: currentUser.id,
+      is_active: true
+    }]);
+
+  if(error){
+    alert(error.message);
+    console.error(error);
+    return;
+  }
+
+  localStorage.removeItem("pendingAd");
+
+  alert("Publicado");
+
+  loadListings();
+}
+
+// --- START POST FLOW ---
 async function startPayment(){
 
   const isAuth = await requireAuth();
@@ -137,11 +210,34 @@ async function startPayment(){
 
   localStorage.setItem("pendingAd", JSON.stringify(pendingAd));
 
+  // 🔥 ADMIN BYPASS
+  const admin = await isAdmin();
+
+  if(admin){
+    await createListingDirect(pendingAd);
+    return;
+  }
+
+  // Normal user → go to payment
   window.location.href =
-  "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
+    "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
 }
 
-// --- PAYMENT RETURN (FIXED) ---
+// --- RESUME FLOW AFTER LOGIN ---
+async function resumePendingAd(){
+
+  const ad = JSON.parse(localStorage.getItem("pendingAd"));
+
+  if(!ad) return;
+
+  if(!currentUser) return;
+
+  console.log("Resuming pending ad...");
+
+  // Optional: auto-continue to payment
+}
+
+// --- PAYMENT RETURN ---
 async function checkPaymentReturn(){
 
   const urlParams = new URLSearchParams(window.location.search);
@@ -150,14 +246,8 @@ async function checkPaymentReturn(){
 
   await loadUser();
 
-  // 🔴 wait for session to stabilize
   if(!currentUser){
-    await new Promise(r => setTimeout(r, 1500));
-    await loadUser();
-  }
-
-  if(!currentUser){
-    alert("Sesión no detectada. Abre el link en Chrome.");
+    alert("Debes iniciar sesión primero");
     return;
   }
 
@@ -166,8 +256,8 @@ async function checkPaymentReturn(){
 
   const expires =
     ad.category === "comida"
-    ? null
-    : new Date(Date.now() + 5*24*60*60*1000).toISOString();
+      ? null
+      : new Date(Date.now() + 5*24*60*60*1000).toISOString();
 
   const { error } = await supabaseClient
     .from('listings')
