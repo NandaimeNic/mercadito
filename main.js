@@ -194,17 +194,45 @@ async function loadListings(){
 
     data.forEach(item => {
       const div = document.createElement("div");
+
+      // --- NEW CARD STYLE ---
+      div.style.background = "#111";
+      div.style.borderRadius = "12px";
+      div.style.padding = "10px";
       div.style.marginBottom = "16px";
-      div.style.borderBottom = "1px solid #333";
-      div.style.paddingBottom = "10px";
+      div.style.boxShadow = "0 2px 6px rgba(0,0,0,0.4)";
 
       div.innerHTML = `
-        <img src="${item.image_url || ''}" style="width:100%;border-radius:8px;margin-bottom:8px;" />
-        <h3 style="color:#D4AF37">${item.title || ''}</h3>
-        <p style="color:#fff">${item.price || ''}</p>
-        <a href="https://wa.me/${item.phone}" target="_blank" style="color:#25D366">
-          WhatsApp
-        </a>
+        <div style="position:relative;">
+          <img src="${item.image_url || ''}" 
+            style="width:100%;height:180px;object-fit:cover;border-radius:10px;" />
+        </div>
+
+        <div style="margin-top:8px;">
+          <div style="color:#D4AF37;font-size:16px;font-weight:600;">
+            ${item.title || ''}
+          </div>
+
+          <div style="color:#fff;font-size:18px;font-weight:bold;margin-top:4px;">
+            ${item.price || ''}
+          </div>
+
+          <div style="margin-top:8px;">
+            <a href="https://wa.me/${item.phone}" target="_blank"
+              style="
+                display:block;
+                text-align:center;
+                background:#25D366;
+                color:#000;
+                padding:10px;
+                border-radius:8px;
+                font-weight:bold;
+                text-decoration:none;
+              ">
+              WhatsApp
+            </a>
+          </div>
+        </div>
       `;
 
       container.appendChild(div);
