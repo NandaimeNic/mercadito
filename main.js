@@ -1,171 +1,170 @@
-// --- Supabase config ---
+// =============================
+// SUPABASE CONFIG
+// =============================
 const SUPABASE_URL = "https://pwcmwmmerrclkjzgnjgt.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3Y213bW1lcnJjbGtqemduamd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTI0MDgsImV4cCI6MjA5MjI4ODQwOH0.OV-D2p2RmSBxk2td-PkZtellr9bTCfhcpa5ZERayEeo";
+const SUPABASE_KEY = "YOUR_KEY_HERE";
 
-let supabaseClient;
+let supabase;
 let currentUser = null;
+let currentProfile = null;
 
-// --- INIT ---
-async function init(){
+// =============================
+// INIT
+// =============================
+async function init() {
 
   if (!window.supabase) {
     alert("Error cargando sistema");
     return;
   }
 
-  supabaseClient = window.supabase.createClient(
+  supabase = window.supabase.createClient(
     SUPABASE_URL,
     SUPABASE_KEY
   );
 
-  // Restore session
-  supabaseClient.auth.onAuthStateChange((event, session) => {
+  // Auth state listener
+  supabase.auth.onAuthStateChange(async (event, session) => {
     currentUser = session?.user || null;
-    console.log("Auth state:", event, currentUser?.id);
+
+    if (currentUser) {
+      await loadProfile();
+      await afterLogin();
+    }
   });
 
-  await loadUser();
-  await resumePendingAd();
-  await checkPaymentReturn();
-
+  await restoreSession();
+  await handlePaymentReturn();
   loadListings();
 }
 
 window.addEventListener("DOMContentLoaded", init);
 
-// --- USER ---
-async function loadUser(){
-  try {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    currentUser = session?.user || null;
-  } catch (err) {
-    console.error("Auth error:", err);
+// =============================
+// SESSION
+// =============================
+async function restoreSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+
+  currentUser = session?.user || null;
+
+  if (currentUser) {
+    await loadProfile();
   }
 }
 
-// --- AUTH SYSTEM ---
-async function signUp(email, password){
+// =============================
+// PROFILE
+// =============================
+async function loadProfile() {
 
-  const { error } = await supabaseClient.auth.signUp({
-    email,
-    password
-  });
-
-  if(error){
-    alert(error.message);
-    return;
-  }
-
-  alert("Cuenta creada. Ahora inicia sesión.");
-}
-
-async function login(email, password){
-
-  const { data, error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if(error){
-    alert(error.message);
-    return;
-  }
-
-  currentUser = data.user;
-
-  alert("Sesión iniciada");
-
-  toggleAuthUI(); // close modal
-
-  await resumePendingAd();
-
-  loadListings();
-}
-
-async function logout(){
-  await supabaseClient.auth.signOut();
-  currentUser = null;
-  alert("Sesión cerrada");
-}
-
-// --- AUTH UI ---
-function toggleAuthUI(){
-  const modal = document.getElementById("authModal");
-  modal.style.display =
-    modal.style.display === "flex" ? "none" : "flex";
-}
-
-function loginFromUI(){
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  login(email, password);
-}
-
-function signupFromUI(){
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  signUp(email, password);
-}
-
-// --- REQUIRE AUTH ---
-async function requireAuth(){
-
-  await loadUser();
-
-  if(currentUser){
-    return true;
-  }
-
-  toggleAuthUI();
-  return false;
-}
-
-// --- ADMIN CHECK ---
-async function isAdmin(){
-
-  if(!currentUser) return false;
-
-  const { data, error } = await supabaseClient
-    .from('profiles')
-    .select('role')
-    .eq('id', currentUser.id)
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", currentUser.id)
     .single();
 
-  if(error){
-    console.error(error);
-    return false;
+  if (error) {
+    console.error("Profile error:", error);
+    currentProfile = { role: "user" };
+    return;
   }
 
-  return data?.role === 'admin';
+  currentProfile = data;
 }
 
-// --- Toggle form ---
-function toggleForm(){
-  const box = document.getElementById("formBox");
-  box.style.display =
-    box.style.display === "block" ? "none" : "block";
+function isAdmin() {
+  return currentProfile?.role === "admin";
 }
 
-// --- IMAGE UPLOAD ---
-async function uploadImage(file){
+// =============================
+// AUTH
+// =============================
+async function signupFromUI() {
 
-  if(!file) return "";
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${Date.now()}-${Math.floor(Math.random()*10000)}.${fileExt}`;
+  const { error } = await supabase.auth.signUp({
+    email,
+    password
+  });
 
-  const { error } = await supabaseClient
+  if (error) return alert(error.message);
+
+  alert("Cuenta creada. Inicia sesión.");
+}
+
+async function loginFromUI() {
+
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) return alert(error.message);
+
+  closeAuthModal();
+}
+
+async function logout() {
+  await supabase.auth.signOut();
+  currentUser = null;
+  currentProfile = null;
+}
+
+// =============================
+// AUTH UI
+// =============================
+function openAuthModal() {
+  document.getElementById("authModal").style.display = "flex";
+}
+
+function closeAuthModal() {
+  document.getElementById("authModal").style.display = "none";
+}
+
+// =============================
+// PENDING LISTING STATE
+// =============================
+function savePendingListing(data) {
+  localStorage.setItem("pendingListing", JSON.stringify(data));
+}
+
+function loadPendingListing() {
+  const data = localStorage.getItem("pendingListing");
+  return data ? JSON.parse(data) : null;
+}
+
+function clearPendingListing() {
+  localStorage.removeItem("pendingListing");
+}
+
+// =============================
+// IMAGE UPLOAD
+// =============================
+async function uploadImage(file) {
+
+  if (!file) return "";
+
+  const fileExt = file.name.split(".").pop();
+  const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+
+  const { error } = await supabase
     .storage
     .from("listings")
     .upload(fileName, file);
 
-  if(error){
-    alert("Error subiendo imagen");
+  if (error) {
     console.error(error);
+    alert("Error subiendo imagen");
     return "";
   }
 
-  const { data } = supabaseClient
+  const { data } = supabase
     .storage
     .from("listings")
     .getPublicUrl(fileName);
@@ -173,40 +172,15 @@ async function uploadImage(file){
   return data.publicUrl;
 }
 
-// --- CREATE LISTING (ADMIN DIRECT) ---
-async function createListingDirect(ad){
-
-  const { error } = await supabaseClient
-    .from('listings')
-    .insert([{
-      ...ad,
-      user_id: currentUser.id,
-      is_active: true
-    }]);
-
-  if(error){
-    alert(error.message);
-    console.error(error);
-    return;
-  }
-
-  localStorage.removeItem("pendingAd");
-
-  alert("Publicado");
-
-  loadListings();
-}
-
-// --- START POST FLOW ---
-async function startPayment(){
-
-  const isAuth = await requireAuth();
-  if(!isAuth) return;
+// =============================
+// CREATE LISTING ENTRY POINT
+// =============================
+async function startPostFlow() {
 
   const file = document.getElementById("imageInput").files[0];
   const imageUrl = await uploadImage(file);
 
-  const pendingAd = {
+  const listing = {
     title: document.getElementById("title").value.trim(),
     price: document.getElementById("price").value.trim(),
     category: document.getElementById("category").value,
@@ -215,109 +189,136 @@ async function startPayment(){
     image_url: imageUrl
   };
 
-  if(!pendingAd.title || !pendingAd.phone){
+  if (!listing.title || !listing.phone) {
     alert("Falta información");
     return;
   }
 
-  localStorage.setItem("pendingAd", JSON.stringify(pendingAd));
+  await handlePost(listing);
+}
 
-  const admin = await isAdmin();
+// =============================
+// CORE POST LOGIC
+// =============================
+async function handlePost(listingData) {
 
-  if(admin){
-    await createListingDirect(pendingAd);
+  if (!currentUser) {
+    savePendingListing(listingData);
+    openAuthModal();
     return;
   }
 
+  if (isAdmin()) {
+    await insertListing(listingData);
+    clearPendingListing();
+    alert("Publicado (admin)");
+    return;
+  }
+
+  // NORMAL USER → PAYMENT
+  savePendingListing(listingData);
+  startPaymentFlow();
+}
+
+// =============================
+// PAYMENT
+// =============================
+function startPaymentFlow() {
   window.location.href =
     "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
 }
 
-// --- RESUME FLOW ---
-async function resumePendingAd(){
+// =============================
+// AFTER LOGIN
+// =============================
+async function afterLogin() {
 
-  const ad = JSON.parse(localStorage.getItem("pendingAd"));
+  const pending = loadPendingListing();
 
-  if(!ad || !currentUser) return;
+  if (!pending) return;
 
-  console.log("Pending ad exists");
+  await handlePost(pending);
 }
 
-// --- PAYMENT RETURN ---
-async function checkPaymentReturn(){
+// =============================
+// AFTER PAYMENT
+// =============================
+async function handlePaymentReturn() {
 
-  const urlParams = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(window.location.search);
 
-  if(urlParams.get("paid") !== "true") return;
+  if (params.get("paid") !== "true") return;
 
-  await loadUser();
+  const pending = loadPendingListing();
 
-  if(!currentUser){
-    alert("Debes iniciar sesión primero");
+  if (!pending) return;
+
+  if (!currentUser) {
+    openAuthModal();
     return;
   }
 
-  const ad = JSON.parse(localStorage.getItem("pendingAd"));
-  if(!ad) return;
+  await insertListing(pending);
 
-  const expires =
-    ad.category === "comida"
-      ? null
-      : new Date(Date.now() + 5*24*60*60*1000).toISOString();
-
-  const { error } = await supabaseClient
-    .from('listings')
-    .insert([{
-      title: ad.title,
-      price: ad.price,
-      category: ad.category,
-      description: ad.description,
-      phone: ad.phone,
-      user_id: currentUser.id,
-      is_active: true,
-      expires_at: expires,
-      image_url: ad.image_url
-    }]);
-
-  if(error){
-    alert("Error guardando: " + error.message);
-    console.error(error);
-    return;
-  }
-
-  localStorage.removeItem("pendingAd");
+  clearPendingListing();
 
   alert("Publicado correctamente");
 
-  window.location.href = "/";
+  window.history.replaceState({}, document.title, "/");
 }
 
-// --- DELETE ---
-async function deleteListing(id){
+// =============================
+// INSERT LISTING
+// =============================
+async function insertListing(data) {
 
-  const confirmDelete = confirm("¿Eliminar este anuncio?");
-  if(!confirmDelete) return;
+  const expires =
+    data.category === "comida"
+      ? null
+      : new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { error } = await supabaseClient
-    .from('listings')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase
+    .from("listings")
+    .insert([{
+      ...data,
+      user_id: currentUser.id,
+      is_active: true,
+      expires_at: expires
+    }]);
 
-  if(error){
-    alert("Error al eliminar");
+  if (error) {
     console.error(error);
+    alert("Error al publicar");
+  }
+}
+
+// =============================
+// DELETE
+// =============================
+async function deleteListing(id) {
+
+  if (!confirm("¿Eliminar anuncio?")) return;
+
+  const { error } = await supabase
+    .from("listings")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error(error);
+    alert("Error");
     return;
   }
-
-  alert("Eliminado");
 
   loadListings();
 }
 
-// --- TIME AGO ---
-function timeAgo(dateString){
+// =============================
+// LISTINGS UI
+// =============================
+function timeAgo(dateString) {
 
-  if(!dateString) return "";
+  if (!dateString) return "";
 
   const diff = Math.floor((new Date() - new Date(dateString)) / 1000);
   const hours = Math.floor(diff / 3600);
@@ -329,71 +330,45 @@ function timeAgo(dateString){
   return `Hace ${days}d`;
 }
 
-// --- LOAD LISTINGS ---
-async function loadListings(){
+async function loadListings() {
 
   const container = document.getElementById("listings");
 
-  try {
-    const { data, error } = await supabaseClient
-      .from('listings')
-      .select("*")
-      .order("id", { ascending: false });
+  const { data, error } = await supabase
+    .from("listings")
+    .select("*")
+    .order("id", { ascending: false });
 
-    if(error){
-      console.error("Supabase error:", error);
-      alert(error.message);
-      throw error;
-    }
-
-    container.innerHTML = "";
-
-    if(!data || data.length === 0){
-      container.innerHTML = "<p style='color:#D4AF37'>No hay anuncios todavía</p>";
-      return;
-    }
-
-    data.forEach(item => {
-
-      const div = document.createElement("div");
-      div.style.marginBottom = "16px";
-      div.style.borderBottom = "1px solid #333";
-      div.style.paddingBottom = "10px";
-
-      const isOwner = currentUser && item.user_id === currentUser.id;
-
-      div.innerHTML = `
-        ${item.image_url ? `<img src="${item.image_url}" style="width:100%;border-radius:8px;margin-bottom:8px;" />` : ""}
-        
-        <h3 style="color:#D4AF37">${item.title || ''}</h3>
-        
-        <p style="color:#fff">${item.price || ''}</p>
-
-        <p style="font-size:12px;opacity:0.6;">
-          ${timeAgo(item.created_at)}
-        </p>
-
-        <p style="font-size:12px;color:#D4AF37;">
-          ${item.category || "General"}
-        </p>
-
-        <a href="https://wa.me/${item.phone}" target="_blank" style="color:#25D366">
-          WhatsApp
-        </a>
-
-        ${isOwner ? `
-          <br/>
-          <button onclick="deleteListing('${item.id}')" style="color:red;margin-top:8px;">
-            Eliminar
-          </button>
-        ` : ""}
-      `;
-
-      container.appendChild(div);
-    });
-
-  } catch (err) {
-    console.error(err);
-    container.innerHTML = "Error cargando datos";
+  if (error) {
+    console.error(error);
+    container.innerHTML = "Error cargando";
+    return;
   }
+
+  container.innerHTML = "";
+
+  if (!data.length) {
+    container.innerHTML = "<p>No hay anuncios</p>";
+    return;
+  }
+
+  data.forEach(item => {
+
+    const isOwner = currentUser && item.user_id === currentUser.id;
+
+    const div = document.createElement("div");
+
+    div.innerHTML = `
+      ${item.image_url ? `<img src="${item.image_url}" style="width:100%">` : ""}
+      <h3>${item.title}</h3>
+      <p>${item.price}</p>
+      <p>${timeAgo(item.created_at)}</p>
+
+      <a href="https://wa.me/${item.phone}" target="_blank">WhatsApp</a>
+
+      ${isOwner ? `<button onclick="deleteListing('${item.id}')">Eliminar</button>` : ""}
+    `;
+
+    container.appendChild(div);
+  });
 }
