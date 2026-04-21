@@ -1,12 +1,13 @@
 // --- Supabase config ---
 const SUPABASE_URL = "https://pwcmwmmerrclkjzgnjgt.supabase.co";
-const SUPABASE_KEY = "YOUR_ANON_KEY";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3Y213bW1lcnJjbGtqemduamd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTI0MDgsImV4cCI6MjA5MjI4ODQwOH0.OV-D2p2RmSBxk2td-PkZtellr9bTCfhcpa5ZERayEeo";
 
 let supabaseClient;
 let currentUser = null;
 
 // --- INIT ---
-async function init() {
+async function init(){
+
   if (!window.supabase) {
     alert("Error cargando sistema");
     return;
@@ -18,53 +19,41 @@ async function init() {
   );
 
   try {
-    const { data, error } =
-      await supabaseClient.auth.getUser();
-
+    const { data, error } = await supabaseClient.auth.getUser();
     if (error) throw error;
-
     currentUser = data.user;
   } catch (err) {
     console.error("Auth error:", err);
   }
 
-  await checkPaymentReturn();
-  await loadListings();
+  checkPaymentReturn();
+  loadListings();
 }
 
-window.addEventListener(
-  "DOMContentLoaded",
-  init
-);
+window.addEventListener("DOMContentLoaded", init);
 
 // --- AUTH ---
-async function login() {
-  const email =
-    prompt("Ingresa tu email:");
+async function login(){
 
-  if (!email) return;
+  const email = prompt("Ingresa tu email:");
+  if(!email) return;
 
-  const { error } =
-    await supabaseClient.auth.signInWithOtp({
-      email: email
-    });
+  const { error } = await supabaseClient.auth.signInWithOtp({ email });
 
-  if (error) {
+  if(error){
     alert("Error enviando código");
     console.error(error);
     return;
   }
 
-  alert(
-    "Revisa tu correo y vuelve a la app"
-  );
+  alert("Revisa tu correo y vuelve a la app");
 }
 
-async function requireAuth() {
-  const { data } =
-    await supabaseClient.auth.getUser();
+async function requireAuth(){
 
-  if (data.user) {
+  const { data } = await supabaseClient.auth.getUser();
+
+  if(data.user){
     currentUser = data.user;
     return true;
   }
@@ -73,305 +62,147 @@ async function requireAuth() {
   return false;
 }
 
-// --- TOGGLE FORM ---
-function toggleForm() {
-  const box =
-    document.getElementById("formBox");
-
-  if (!box) return;
-
+// --- Toggle form ---
+function toggleForm(){
+  const box = document.getElementById("formBox");
   box.style.display =
-    box.style.display === "block"
-      ? "none"
-      : "block";
+    box.style.display === "block" ? "none" : "block";
 }
 
 // --- IMAGE UPLOAD ---
-async function uploadImage(file) {
-  if (!file) return "";
+async function uploadImage(file){
 
-  const ext =
-    file.name.split(".").pop();
+  if(!file) return "";
 
-  const fileName =
-    `${Date.now()}-${Math.floor(
-      Math.random() * 9999
-    )}.${ext}`;
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${Date.now()}-${Math.floor(Math.random()*10000)}.${fileExt}`;
 
-  const { error } =
-    await supabaseClient.storage
-      .from("listings")
-      .upload(fileName, file, {
-        upsert: false
-      });
+  const { error } = await supabaseClient
+    .storage
+    .from("listings")
+    .upload(fileName, file);
 
-  if (error) {
-    console.error(error);
+  if(error){
     alert("Error subiendo imagen");
+    console.error(error);
     return "";
   }
 
-  const { data } =
-    supabaseClient.storage
-      .from("listings")
-      .getPublicUrl(fileName);
-
-  if (
-    !data ||
-    !data.publicUrl
-  ) {
-    return "";
-  }
+  const { data } = supabaseClient
+    .storage
+    .from("listings")
+    .getPublicUrl(fileName);
 
   return data.publicUrl;
 }
 
-// --- START PAYMENT ---
-async function startPayment() {
-  const isAuth =
-    await requireAuth();
+// --- Payment ---
+async function startPayment(){
 
-  if (!isAuth) return;
+  const isAuth = await requireAuth();
+  if(!isAuth) return;
 
-  const file =
-    document.getElementById(
-      "imageInput"
-    )?.files[0];
-
-  const imageUrl =
-    await uploadImage(file);
+  const file = document.getElementById("imageInput").files[0];
+  const imageUrl = await uploadImage(file);
 
   const pendingAd = {
-    title:
-      document.getElementById(
-        "title"
-      )?.value.trim(),
-
-    price:
-      document.getElementById(
-        "price"
-      )?.value.trim(),
-
-    category:
-      document.getElementById(
-        "category"
-      )?.value || "",
-
-    description:
-      document.getElementById(
-        "desc"
-      )?.value.trim(),
-
-    phone:
-      document.getElementById(
-        "phone"
-      )?.value.trim(),
-
+    title: document.getElementById("title").value.trim(),
+    price: document.getElementById("price").value.trim(),
+    category: document.getElementById("category").value,
+    description: document.getElementById("desc").value.trim(),
+    phone: document.getElementById("phone").value.trim(),
     image_url: imageUrl
   };
 
-  if (
-    !pendingAd.title ||
-    !pendingAd.phone
-  ) {
+  if(!pendingAd.title || !pendingAd.phone){
     alert("Falta información");
     return;
   }
 
-  localStorage.setItem(
-    "pendingAd",
-    JSON.stringify(pendingAd)
-  );
+  localStorage.setItem("pendingAd", JSON.stringify(pendingAd));
 
   window.location.href =
-    "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
+  "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
 }
 
-// --- PAYMENT RETURN ---
-async function checkPaymentReturn() {
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
+// --- Payment return ---
+async function checkPaymentReturn(){
 
-  if (
-    params.get("paid") !==
-    "true"
-  ) return;
+  const urlParams = new URLSearchParams(window.location.search);
 
-  const { data } =
-    await supabaseClient.auth.getUser();
+  if(urlParams.get("paid") === "true"){
 
-  if (!data.user) {
-    alert(
-      "Debes iniciar sesión después del pago"
-    );
-    return;
-  }
+    const { data } = await supabaseClient.auth.getUser();
 
-  const raw =
-    localStorage.getItem(
-      "pendingAd"
-    );
+    if(!data.user){
+      alert("Debes iniciar sesión después del pago");
+      return;
+    }
 
-  if (!raw) return;
+    const ad = JSON.parse(localStorage.getItem("pendingAd"));
+    if(!ad) return;
 
-  const ad =
-    JSON.parse(raw);
-
-  const expires =
-    ad.category === "comida"
+    const expires =
+      ad.category === "comida"
       ? null
-      : new Date(
-          Date.now() +
-            5 *
-              24 *
-              60 *
-              60 *
-              1000
-        ).toISOString();
+      : new Date(Date.now() + 5*24*60*60*1000).toISOString();
 
-  const { error } =
-    await supabaseClient
-      .from("listings")
-      .insert([
-        {
-          title: ad.title,
-          price: ad.price,
-          category: ad.category,
-          description:
-            ad.description,
-          phone: ad.phone,
-          user_id:
-            data.user.id,
-          is_active: true,
-          expires_at: expires,
-          image_url:
-            ad.image_url || ""
-        }
-      ]);
+    const { error } = await supabaseClient
+      .from('listings')
+      .insert([{
+        title: ad.title,
+        price: ad.price,
+        category: ad.category,
+        description: ad.description,
+        phone: ad.phone,
+        user_id: data.user.id,
+        is_active: true,
+        expires_at: expires,
+        image_url: ad.image_url
+      }]);
 
-  if (error) {
-    alert(
-      "Error guardando: " +
-        error.message
-    );
-    console.error(error);
-    return;
+    if(error){
+      alert("Error guardando: " + error.message);
+      console.error(error);
+      return;
+    }
+
+    localStorage.removeItem("pendingAd");
+    window.location.href = "/";
   }
-
-  localStorage.removeItem(
-    "pendingAd"
-  );
-
-  alert(
-    "Anuncio publicado"
-  );
-
-  window.location.href = "/";
 }
 
-// --- LOAD LISTINGS ---
-async function loadListings() {
-  const container =
-    document.getElementById(
-      "listings"
-    );
+// --- Load listings ---
+async function loadListings(){
 
-  if (!container) return;
+  const container = document.getElementById("listings");
 
   try {
-    const { data, error } =
-      await supabaseClient
-        .from("listings")
-        .select("*")
-        .order("id", {
-          ascending: false
-        });
+    const { data, error } = await supabaseClient
+      .from('listings')
+      .select("*")
+      .order("id", { ascending: false });
 
-    if (error) throw error;
+    if(error) throw error;
 
     container.innerHTML = "";
 
-    if (
-      !data ||
-      data.length === 0
-    ) {
-      container.innerHTML =
-        "<p style='color:#D4AF37'>No hay anuncios todavía</p>";
+    if(!data || data.length === 0){
+      container.innerHTML = "<p style='color:#D4AF37'>No hay anuncios todavía</p>";
       return;
     }
 
     data.forEach(item => {
-      const div =
-        document.createElement(
-          "div"
-        );
-
-      div.style.background =
-        "#111";
-      div.style.borderRadius =
-        "14px";
-      div.style.padding =
-        "12px";
-      div.style.marginBottom =
-        "18px";
-      div.style.boxShadow =
-        "0 4px 10px rgba(0,0,0,.4)";
-
-      const image =
-        item.image_url &&
-        item.image_url.trim() !==
-          ""
-          ? item.image_url
-          : "https://via.placeholder.com/600x400?text=Sin+Imagen";
+      const div = document.createElement("div");
+      div.style.marginBottom = "16px";
+      div.style.borderBottom = "1px solid #333";
+      div.style.paddingBottom = "10px";
 
       div.innerHTML = `
-        <img
-          src="${image}"
-          onerror="this.src='https://via.placeholder.com/600x400?text=Sin+Imagen'"
-          style="
-            width:100%;
-            height:190px;
-            object-fit:cover;
-            border-radius:10px;
-          "
-        >
-
-        <div style="
-          margin-top:10px;
-          color:#D4AF37;
-          font-size:19px;
-          font-weight:700;
-        ">
-          ${item.title || ""}
-        </div>
-
-        <div style="
-          color:#fff;
-          font-size:26px;
-          font-weight:bold;
-          margin-top:4px;
-        ">
-          ${item.price || ""}
-        </div>
-
-        <a
-          href="https://wa.me/${item.phone}"
-          target="_blank"
-          style="
-            display:block;
-            margin-top:12px;
-            background:#25D366;
-            color:#000;
-            text-align:center;
-            padding:12px;
-            border-radius:9px;
-            text-decoration:none;
-            font-weight:bold;
-            font-size:18px;
-          "
-        >
+        <img src="${item.image_url || ''}" style="width:100%;border-radius:8px;margin-bottom:8px;" />
+        <h3 style="color:#D4AF37">${item.title || ''}</h3>
+        <p style="color:#fff">${item.price || ''}</p>
+        <a href="https://wa.me/${item.phone}" target="_blank" style="color:#25D366">
           WhatsApp
         </a>
       `;
@@ -380,9 +211,8 @@ async function loadListings() {
     });
 
   } catch (err) {
+    alert("Error cargando anuncios");
     console.error(err);
-
-    container.innerHTML =
-      "<p style='color:#D4AF37'>Error cargando anuncios</p>";
+    container.innerHTML = "Error cargando datos";
   }
 }
