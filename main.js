@@ -155,7 +155,7 @@ async function checkPaymentReturn(){
       }]);
 
     if(error){
-      alert("Error guardando");
+      alert("Error guardando: " + error.message);
       console.error(error);
       return;
     }
@@ -193,8 +193,9 @@ async function loadListings(){
     .order("id",{ascending:false});
 
   if(error){
-    container.innerHTML = "Error";
+    alert("Error loading listings: " + error.message);
     console.error(error);
+    container.innerHTML = "Error: " + error.message;
     return;
   }
 
