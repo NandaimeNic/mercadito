@@ -1,6 +1,6 @@
 // --- Supabase config ---
 const SUPABASE_URL = "https://mvcqoyhepcfoyutcvtrh.supabase.co";
-const SUPABASE_KEY = "sb_publishable_H6BeHo4_ihvf0QHBSAL0yg_-RmyxNLF";
+const SUPABASE_KEY = "PASTE_YOUR_ANON_KEY_HERE"; // ← replace with eyJhbGciOiJIUzI1NiIs...
 
 let supabaseClient;
 let currentUser = null;
@@ -165,23 +165,6 @@ async function checkPaymentReturn(){
   }
 }
 
-// --- Categories ---
-const CATEGORIES = [
-  "ropa","electronica","reparaciones","hogar",
-  "vehiculos","comida","servicios","otros"
-];
-
-const CATEGORY_LABELS = {
-  ropa:"👕 Ropa",
-  electronica:"📱 Electrónica",
-  reparaciones:"🔧 Reparaciones",
-  hogar:"🏠 Hogar",
-  vehiculos:"🚗 Vehículos",
-  comida:"🍔 Comida",
-  servicios:"🧰 Servicios",
-  otros:"📦 Otros"
-};
-
 // --- Load listings ---
 async function loadListings(){
 
@@ -200,79 +183,4 @@ async function loadListings(){
   }
 
   container.innerHTML = "";
-
-  CATEGORIES.forEach(cat => {
-
-    const items = data.filter(item => {
-      if(item.category !== cat) return false;
-      if(item.expires_at &&
-         new Date(item.expires_at) < new Date()){
-        return false;
-      }
-      return true;
-    });
-
-    if(items.length === 0) return;
-
-    const section = document.createElement("div");
-
-    section.innerHTML = `
-      <div class="category-title">${CATEGORY_LABELS[cat]}</div>
-      <div class="scroll"></div>
-    `;
-
-    const scroll = section.querySelector(".scroll");
-
-    items.forEach(item => {
-
-      const card = document.createElement("div");
-      card.className = "card";
-
-      card.innerHTML = `
-        <div class="badge">Nuevo</div>
-        <img src="${item.image_url || 'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519'}">
-        <div class="content">
-          <div><strong>${item.title}</strong></div>
-          <div class="price">${item.price || ""}</div>
-        </div>
-      `;
-
-      card.onclick = () => openDetail(item);
-
-      scroll.appendChild(card);
-    });
-
-    container.appendChild(section);
-  });
-}
-
-// --- Modal ---
-function openDetail(item){
-  const modal = document.getElementById("detailModal");
-
-  modal.innerHTML = `
-    <div class="modal-content">
-      <h2>${item.title}</h2>
-      <p>${item.description || ""}</p>
-      <div class="price">${item.price || ""}</div>
-      <button onclick="contact('${item.phone}')">WhatsApp</button>
-      <button onclick="closeModal()">Cerrar</button>
-    </div>
-  `;
-
-  modal.style.display = "flex";
-}
-
-function closeModal(){
-  document.getElementById("detailModal").style.display = "none";
-}
-
-// --- WhatsApp ---
-function contact(phone){
-  const clean = phone.replace(/\D/g,"");
-
-  window.open(
-    `https://wa.me/${clean}?text=Hola vi tu anuncio en Mercadito Nandaime`,
-    "_blank"
-  );
 }
