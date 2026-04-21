@@ -43,7 +43,12 @@ async function login(){
   const email = prompt("Ingresa tu email:");
   if(!email) return;
 
-  const { error } = await supabaseClient.auth.signInWithOtp({ email });
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: window.location.origin
+    }
+  });
 
   if(error){
     alert("Error enviando código");
@@ -129,7 +134,7 @@ async function startPayment(){
   "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
 }
 
-// --- PAYMENT RETURN (STABILIZED) ---
+// --- PAYMENT RETURN ---
 async function checkPaymentReturn(){
 
   const urlParams = new URLSearchParams(window.location.search);
