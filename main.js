@@ -18,7 +18,8 @@ async function init() {
   );
 
   try {
-    const { data, error } = await supabaseClient.auth.getUser();
+    const { data, error } =
+      await supabaseClient.auth.getUser();
 
     if (error) throw error;
 
@@ -31,11 +32,15 @@ async function init() {
   await loadListings();
 }
 
-window.addEventListener("DOMContentLoaded", init);
+window.addEventListener(
+  "DOMContentLoaded",
+  init
+);
 
 // --- AUTH ---
 async function login() {
-  const email = prompt("Ingresa tu email:");
+  const email =
+    prompt("Ingresa tu email:");
 
   if (!email) return;
 
@@ -50,7 +55,9 @@ async function login() {
     return;
   }
 
-  alert("Revisa tu correo y vuelve a la app");
+  alert(
+    "Revisa tu correo y vuelve a la app"
+  );
 }
 
 async function requireAuth() {
@@ -66,10 +73,12 @@ async function requireAuth() {
   return false;
 }
 
-// --- Toggle form ---
+// --- TOGGLE FORM ---
 function toggleForm() {
   const box =
     document.getElementById("formBox");
+
+  if (!box) return;
 
   box.style.display =
     box.style.display === "block"
@@ -77,7 +86,7 @@ function toggleForm() {
       : "block";
 }
 
-// --- IMAGE UPLOAD FIXED ---
+// --- IMAGE UPLOAD ---
 async function uploadImage(file) {
   if (!file) return "";
 
@@ -85,7 +94,9 @@ async function uploadImage(file) {
     file.name.split(".").pop();
 
   const fileName =
-    `${Date.now()}-${Math.floor(Math.random() * 9999)}.${ext}`;
+    `${Date.now()}-${Math.floor(
+      Math.random() * 9999
+    )}.${ext}`;
 
   const { error } =
     await supabaseClient.storage
@@ -105,8 +116,10 @@ async function uploadImage(file) {
       .from("listings")
       .getPublicUrl(fileName);
 
-  if (!data || !data.publicUrl) {
-    alert("No se pudo generar URL pública");
+  if (
+    !data ||
+    !data.publicUrl
+  ) {
     return "";
   }
 
@@ -121,32 +134,38 @@ async function startPayment() {
   if (!isAuth) return;
 
   const file =
-    document.getElementById("imageInput")
-      .files[0];
+    document.getElementById(
+      "imageInput"
+    )?.files[0];
 
   const imageUrl =
     await uploadImage(file);
 
   const pendingAd = {
     title:
-      document.getElementById("title")
-        .value.trim(),
+      document.getElementById(
+        "title"
+      )?.value.trim(),
 
     price:
-      document.getElementById("price")
-        .value.trim(),
+      document.getElementById(
+        "price"
+      )?.value.trim(),
 
     category:
-      document.getElementById("category")
-        .value,
+      document.getElementById(
+        "category"
+      )?.value || "",
 
     description:
-      document.getElementById("desc")
-        .value.trim(),
+      document.getElementById(
+        "desc"
+      )?.value.trim(),
 
     phone:
-      document.getElementById("phone")
-        .value.trim(),
+      document.getElementById(
+        "phone"
+      )?.value.trim(),
 
     image_url: imageUrl
   };
@@ -176,7 +195,8 @@ async function checkPaymentReturn() {
     );
 
   if (
-    params.get("paid") !== "true"
+    params.get("paid") !==
+    "true"
   ) return;
 
   const { data } =
@@ -204,7 +224,11 @@ async function checkPaymentReturn() {
       ? null
       : new Date(
           Date.now() +
-          5 * 24 * 60 * 60 * 1000
+            5 *
+              24 *
+              60 *
+              60 *
+              1000
         ).toISOString();
 
   const { error } =
@@ -215,9 +239,11 @@ async function checkPaymentReturn() {
           title: ad.title,
           price: ad.price,
           category: ad.category,
-          description: ad.description,
+          description:
+            ad.description,
           phone: ad.phone,
-          user_id: data.user.id,
+          user_id:
+            data.user.id,
           is_active: true,
           expires_at: expires,
           image_url:
@@ -228,7 +254,7 @@ async function checkPaymentReturn() {
   if (error) {
     alert(
       "Error guardando: " +
-      error.message
+        error.message
     );
     console.error(error);
     return;
@@ -238,7 +264,9 @@ async function checkPaymentReturn() {
     "pendingAd"
   );
 
-  alert("Anuncio publicado");
+  alert(
+    "Anuncio publicado"
+  );
 
   window.location.href = "/";
 }
@@ -250,12 +278,13 @@ async function loadListings() {
       "listings"
     );
 
+  if (!container) return;
+
   try {
     const { data, error } =
       await supabaseClient
         .from("listings")
         .select("*")
-        .eq("is_active", true)
         .order("id", {
           ascending: false
         });
@@ -282,17 +311,18 @@ async function loadListings() {
       div.style.background =
         "#111";
       div.style.borderRadius =
-        "12px";
+        "14px";
       div.style.padding =
-        "10px";
+        "12px";
       div.style.marginBottom =
-        "16px";
+        "18px";
       div.style.boxShadow =
-        "0 2px 6px rgba(0,0,0,0.4)";
+        "0 4px 10px rgba(0,0,0,.4)";
 
       const image =
         item.image_url &&
-        item.image_url.trim() !== ""
+        item.image_url.trim() !==
+          ""
           ? item.image_url
           : "https://via.placeholder.com/600x400?text=Sin+Imagen";
 
@@ -302,48 +332,48 @@ async function loadListings() {
           onerror="this.src='https://via.placeholder.com/600x400?text=Sin+Imagen'"
           style="
             width:100%;
-            height:180px;
+            height:190px;
             object-fit:cover;
             border-radius:10px;
           "
-        />
+        >
 
-        <div style="margin-top:8px;">
-          <div style="
-            color:#D4AF37;
-            font-size:16px;
-            font-weight:600;
-          ">
-            ${item.title || ""}
-          </div>
-
-          <div style="
-            color:#fff;
-            font-size:18px;
-            font-weight:bold;
-            margin-top:4px;
-          ">
-            ${item.price || ""}
-          </div>
-
-          <a
-            href="https://wa.me/${item.phone}"
-            target="_blank"
-            style="
-              display:block;
-              margin-top:10px;
-              text-align:center;
-              background:#25D366;
-              color:#000;
-              padding:10px;
-              border-radius:8px;
-              font-weight:bold;
-              text-decoration:none;
-            "
-          >
-            WhatsApp
-          </a>
+        <div style="
+          margin-top:10px;
+          color:#D4AF37;
+          font-size:19px;
+          font-weight:700;
+        ">
+          ${item.title || ""}
         </div>
+
+        <div style="
+          color:#fff;
+          font-size:26px;
+          font-weight:bold;
+          margin-top:4px;
+        ">
+          ${item.price || ""}
+        </div>
+
+        <a
+          href="https://wa.me/${item.phone}"
+          target="_blank"
+          style="
+            display:block;
+            margin-top:12px;
+            background:#25D366;
+            color:#000;
+            text-align:center;
+            padding:12px;
+            border-radius:9px;
+            text-decoration:none;
+            font-weight:bold;
+            font-size:18px;
+          "
+        >
+          WhatsApp
+        </a>
       `;
 
       container.appendChild(div);
@@ -353,6 +383,6 @@ async function loadListings() {
     console.error(err);
 
     container.innerHTML =
-      "Error cargando anuncios";
+      "<p style='color:#D4AF37'>Error cargando anuncios</p>";
   }
 }
