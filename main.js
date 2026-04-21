@@ -1,6 +1,6 @@
 // --- Supabase config ---
 const SUPABASE_URL = "https://pwcmwmmerrclkjzgnjgt.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3Y213bW1lcnJjbGtqemduamd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTI0MDgsImV4cCI6MjA5MjI4ODQwOH0.OV-D2p2RmSBxk2td-PkZtellr9bTCfhcpa5ZERayEeo";
+const SUPABASE_KEY = "YOUR_KEY_HERE";
 
 let supabaseClient;
 let currentUser = null;
@@ -18,6 +18,17 @@ async function init(){
     SUPABASE_KEY
   );
 
+  await loadUser();
+
+  await checkPaymentReturn();
+
+  loadListings();
+}
+
+window.addEventListener("DOMContentLoaded", init);
+
+// --- USER ---
+async function loadUser(){
   try {
     const { data, error } = await supabaseClient.auth.getUser();
     if (error) throw error;
@@ -25,14 +36,8 @@ async function init(){
   } catch (err) {
     console.error("Auth error:", err);
   }
-
-  checkPaymentReturn();
-  loadListings();
 }
 
-window.addEventListener("DOMContentLoaded", init);
-
-// --- AUTH ---
 async function login(){
 
   const email = prompt("Ingresa tu email:");
@@ -51,10 +56,9 @@ async function login(){
 
 async function requireAuth(){
 
-  const { data } = await supabaseClient.auth.getUser();
+  await loadUser();
 
-  if(data.user){
-    currentUser = data.user;
+  if(currentUser){
     return true;
   }
 
@@ -96,7 +100,7 @@ async function uploadImage(file){
   return data.publicUrl;
 }
 
-// --- Payment ---
+// --- PAYMENT START ---
 async function startPayment(){
 
   const isAuth = await requireAuth();
@@ -125,54 +129,93 @@ async function startPayment(){
   "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
 }
 
-// --- Payment return ---
+// --- PAYMENT RETURN (STABILIZED) ---
 async function checkPaymentReturn(){
 
   const urlParams = new URLSearchParams(window.location.search);
 
-  if(urlParams.get("paid") === "true"){
+  if(urlParams.get("paid") !== "true") return;
 
-    const { data } = await supabaseClient.auth.getUser();
+  await loadUser();
 
-    if(!data.user){
-      alert("Debes iniciar sesión después del pago");
-      return;
-    }
-
-    const ad = JSON.parse(localStorage.getItem("pendingAd"));
-    if(!ad) return;
-
-    const expires =
-      ad.category === "comida"
-      ? null
-      : new Date(Date.now() + 5*24*60*60*1000).toISOString();
-
-    const { error } = await supabaseClient
-      .from('listings')
-      .insert([{
-        title: ad.title,
-        price: ad.price,
-        category: ad.category,
-        description: ad.description,
-        phone: ad.phone,
-        user_id: data.user.id,
-        is_active: true,
-        expires_at: expires,
-        image_url: ad.image_url
-      }]);
-
-    if(error){
-      alert("Error guardando: " + error.message);
-      console.error(error);
-      return;
-    }
-
-    localStorage.removeItem("pendingAd");
-    window.location.href = "/";
+  if(!currentUser){
+    alert("Sesión perdida. Inicia sesión otra vez.");
+    return;
   }
+
+  const ad = JSON.parse(localStorage.getItem("pendingAd"));
+  if(!ad) return;
+
+  const expires =
+    ad.category === "comida"
+    ? null
+    : new Date(Date.now() + 5*24*60*60*1000).toISOString();
+
+  const { error } = await supabaseClient
+    .from('listings')
+    .insert([{
+      title: ad.title,
+      price: ad.price,
+      category: ad.category,
+      description: ad.description,
+      phone: ad.phone,
+      user_id: currentUser.id,
+      is_active: true,
+      expires_at: expires,
+      image_url: ad.image_url
+    }]);
+
+  if(error){
+    alert("Error guardando: " + error.message);
+    console.error(error);
+    return;
+  }
+
+  localStorage.removeItem("pendingAd");
+
+  alert("Publicado correctamente");
+
+  window.location.href = "/";
 }
 
-// --- Load listings ---
+// --- DELETE ---
+async function deleteListing(id){
+
+  const confirmDelete = confirm("¿Eliminar este anuncio?");
+  if(!confirmDelete) return;
+
+  const { error } = await supabaseClient
+    .from('listings')
+    .delete()
+    .eq('id', id);
+
+  if(error){
+    alert("Error al eliminar");
+    console.error(error);
+    return;
+  }
+
+  alert("Eliminado");
+
+  loadListings();
+}
+
+// --- TIME AGO ---
+function timeAgo(dateString){
+
+  if(!dateString) return "";
+
+  const diff = Math.floor((new Date() - new Date(dateString)) / 1000);
+  const hours = Math.floor(diff / 3600);
+
+  if (hours < 1) return "Hace minutos";
+  if (hours < 24) return `Hace ${hours}h`;
+
+  const days = Math.floor(hours / 24);
+  return `Hace ${days}d`;
+}
+
+// --- LOAD LISTINGS ---
 async function loadListings(){
 
   const container = document.getElementById("listings");
@@ -193,18 +236,39 @@ async function loadListings(){
     }
 
     data.forEach(item => {
+
       const div = document.createElement("div");
       div.style.marginBottom = "16px";
       div.style.borderBottom = "1px solid #333";
       div.style.paddingBottom = "10px";
 
+      const isOwner = currentUser && item.user_id === currentUser.id;
+
       div.innerHTML = `
-        <img src="${item.image_url || ''}" style="width:100%;border-radius:8px;margin-bottom:8px;" />
+        ${item.image_url ? `<img src="${item.image_url}" style="width:100%;border-radius:8px;margin-bottom:8px;" />` : ""}
+        
         <h3 style="color:#D4AF37">${item.title || ''}</h3>
+        
         <p style="color:#fff">${item.price || ''}</p>
+
+        <p style="font-size:12px;opacity:0.6;">
+          ${timeAgo(item.created_at)}
+        </p>
+
+        <p style="font-size:12px;color:#D4AF37;">
+          ${item.category || "General"}
+        </p>
+
         <a href="https://wa.me/${item.phone}" target="_blank" style="color:#25D366">
           WhatsApp
         </a>
+
+        ${isOwner ? `
+          <br/>
+          <button onclick="deleteListing('${item.id}')" style="color:red;margin-top:8px;">
+            Eliminar
+          </button>
+        ` : ""}
       `;
 
       container.appendChild(div);
