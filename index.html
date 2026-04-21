@@ -1,326 +1,105 @@
-// =============================
-// CONFIG
-// =============================
-const SUPABASE_URL = "https://pwcmwmmerrclkjzgnjgt.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB3Y213bW1lcnJjbGtqemduamd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTI0MDgsImV4cCI6MjA5MjI4ODQwOH0.OV-D2p2RmSBxk2td-PkZtellr9bTCfhcpa5ZERayEeo";
-
-let supabase;
-let currentUser = null;
-let currentProfile = { role: "user" };
-
-// =============================
-// INIT
-// =============================
-async function init() {
-  console.log("INIT");
-
-  if (!window.supabase) {
-    alert("Supabase no cargó");
-    return;
-  }
-
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log("AUTH:", event);
-
-    currentUser = session?.user || null;
-
-    if (currentUser) {
-      await loadProfile();
-      await afterLogin();
-    }
-
-    loadListings();
-  });
-
-  await restoreSession();
-  await handlePaymentReturn();
-  await loadListings();
-}
-
-window.addEventListener("DOMContentLoaded", init);
-
-// =============================
-// SESSION
-// =============================
-async function restoreSession() {
-  const { data } = await supabase.auth.getSession();
-  currentUser = data?.session?.user || null;
-
-  if (currentUser) {
-    await loadProfile();
-  }
-}
-
-// =============================
-// PROFILE (SAFE)
-// =============================
-async function loadProfile() {
-  try {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", currentUser.id)
-      .single();
-
-    if (error) throw error;
-
-    currentProfile = data || { role: "user" };
-  } catch {
-    currentProfile = { role: "user" };
-  }
-}
-
-function isAdmin() {
-  return currentProfile?.role === "admin";
-}
-
-// =============================
-// AUTH
-// =============================
-async function loginFromUI() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) return alert(error.message);
-
-  closeAuthModal();
-}
-
-async function signupFromUI() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  const { error } = await supabase.auth.signUp({ email, password });
-
-  if (error) return alert(error.message);
-
-  alert("Cuenta creada");
-}
-
-async function logout() {
-  await supabase.auth.signOut();
-  currentUser = null;
-  currentProfile = { role: "user" };
-  loadListings();
-}
-
-// =============================
-// UI
-// =============================
-function toggleAuthUI() {
-  const m = document.getElementById("authModal");
-  m.style.display = m.style.display === "flex" ? "none" : "flex";
-}
-
-function closeAuthModal() {
-  document.getElementById("authModal").style.display = "none";
-}
-
-function toggleForm() {
-  const box = document.getElementById("formBox");
-  box.style.display = box.style.display === "block" ? "none" : "block";
-}
-
-// =============================
-// STORAGE STATE
-// =============================
-function savePendingListing(data) {
-  localStorage.setItem("pendingListing", JSON.stringify(data));
-}
-
-function loadPendingListing() {
-  const d = localStorage.getItem("pendingListing");
-  return d ? JSON.parse(d) : null;
-}
-
-function clearPendingListing() {
-  localStorage.removeItem("pendingListing");
-}
-
-// =============================
-// IMAGE UPLOAD
-// =============================
-async function uploadImage(file) {
-  if (!file) return "";
-
-  const name = Date.now() + "-" + file.name;
-
-  const { error } = await supabase.storage
-    .from("listings")
-    .upload(name, file);
-
-  if (error) {
-    console.error("UPLOAD ERROR:", error);
-    return "";
-  }
-
-  const { data } = supabase.storage
-    .from("listings")
-    .getPublicUrl(name);
-
-  return data.publicUrl;
-}
-
-// =============================
-// ENTRY POINT
-// =============================
-async function startPost() {
-  const file = document.getElementById("imageInput").files[0];
-  const image = await uploadImage(file);
-
-  const listing = {
-    title: document.getElementById("title").value.trim(),
-    price: document.getElementById("price").value.trim(),
-    category: document.getElementById("category").value,
-    description: document.getElementById("desc").value.trim(),
-    phone: document.getElementById("phone").value.trim(),
-    image_url: image
-  };
-
-  if (!listing.title || !listing.phone) {
-    alert("Falta información");
-    return;
-  }
-
-  await handlePost(listing);
-}
-
-// =============================
-// CORE LOGIC
-// =============================
-async function handlePost(data) {
-  if (!currentUser) {
-    savePendingListing(data);
-    toggleAuthUI();
-    return;
-  }
-
-  if (isAdmin()) {
-    await insertListing(data);
-    clearPendingListing();
-    alert("Publicado");
-    return;
-  }
-
-  savePendingListing(data);
-
-  window.location.href =
-    "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
-}
-
-// =============================
-// AFTER LOGIN
-// =============================
-async function afterLogin() {
-  const pending = loadPendingListing();
-  if (pending) await handlePost(pending);
-}
-
-// =============================
-// AFTER PAYMENT
-// =============================
-async function handlePaymentReturn() {
-  const params = new URLSearchParams(window.location.search);
-
-  if (params.get("paid") !== "true") return;
-
-  const pending = loadPendingListing();
-
-  if (!pending || !currentUser) return;
-
-  await insertListing(pending);
-  clearPendingListing();
-
-  alert("Publicado");
-
-  window.history.replaceState({}, document.title, "/");
-}
-
-// =============================
-// INSERT
-// =============================
-async function insertListing(data) {
-  const { error } = await supabase
-    .from("listings")
-    .insert([{
-      ...data,
-      user_id: currentUser.id,
-      is_active: true
-    }]);
-
-  if (error) {
-    console.error("INSERT ERROR:", error);
-    alert("Error al publicar");
-  } else {
-    loadListings();
-  }
-}
-
-// =============================
-// DELETE
-// =============================
-async function deleteListing(id) {
-  const { error } = await supabase
-    .from("listings")
-    .delete()
-    .eq("id", id);
-
-  if (error) alert("Error");
-  else loadListings();
-}
-
-// =============================
-// LOAD LISTINGS
-// =============================
-async function loadListings() {
-  const el = document.getElementById("listings");
-
-  const { data, error } = await supabase
-    .from("listings")
-    .select("*")
-    .order("id", { ascending: false });
-
-  if (error) {
-    console.error(error);
-    el.innerHTML = "Error cargando";
-    return;
-  }
-
-  el.innerHTML = "";
-
-  if (!data.length) {
-    el.innerHTML = "No hay anuncios";
-    return;
-  }
-
-  data.forEach(item => {
-    const owner = currentUser && item.user_id === currentUser.id;
-
-    const div = document.createElement("div");
-
-    div.innerHTML = `
-      ${item.image_url ? `<img src="${item.image_url}" style="width:100%">` : ""}
-      <h3>${item.title}</h3>
-      <p>${item.price}</p>
-      <a href="https://wa.me/${item.phone}" target="_blank">WhatsApp</a>
-      ${owner ? `<button onclick="deleteListing('${item.id}')">Eliminar</button>` : ""}
-    `;
-
-    el.appendChild(div);
-  });
-}
-
-// =============================
-// GLOBAL BINDINGS
-// =============================
-window.toggleAuthUI = toggleAuthUI;
-window.loginFromUI = loginFromUI;
-window.signupFromUI = signupFromUI;
-window.logout = logout;
-window.toggleForm = toggleForm;
-window.startPost = startPost;
-window.deleteListing = deleteListing;
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Mercadito Nandaime</title>
+
+<link rel="stylesheet" href="style.css?v=6">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="main.js?v=6" defer></script>
+
+</head>
+
+<body>
+
+<header>Mercadito Nandaime</header>
+
+<div class="sub">
+Compra y vende en Nandaime
+</div>
+
+<div class="container">
+
+<!-- AUTH -->
+<div style="display:flex; gap:10px; margin-bottom:15px;">
+  <button onclick="toggleAuthUI()">Login</button>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<button class="publish" onclick="toggleForm()">Publicar anuncio</button>
+
+<div class="search-box">
+  <input placeholder="¿Qué buscas en Nandaime?">
+  <button>Buscar</button>
+</div>
+
+<!-- FORM -->
+<div class="form-box" id="formBox" style="display:none;">
+
+<input id="title" placeholder="Título">
+<input id="price" placeholder="Precio">
+
+<select id="category">
+<option value="ropa">Ropa</option>
+<option value="electronica">Electrónica</option>
+<option value="reparaciones">Reparaciones</option>
+<option value="hogar">Hogar</option>
+<option value="vehiculos">Vehículos</option>
+<option value="comida">Comida</option>
+<option value="servicios">Servicios</option>
+<option value="otros">Otros</option>
+</select>
+
+<textarea id="desc" placeholder="Descripción"></textarea>
+
+<input type="file" id="imageInput" accept="image/*">
+<input id="phone" placeholder="WhatsApp (+505...)">
+
+<button class="publish" onclick="startPost()">Publicar</button>
+
+</div>
+
+<!-- LISTINGS -->
+<div id="listings"></div>
+
+</div>
+
+<!-- AUTH MODAL -->
+<div id="authModal" style="
+display:none;
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.8);
+justify-content:center;
+align-items:center;
+z-index:999;
+">
+
+<div style="
+background:#111;
+padding:20px;
+border-radius:10px;
+width:90%;
+max-width:350px;
+">
+
+<h3 style="color:#D4AF37;">Cuenta</h3>
+
+<input id="email" placeholder="Email" style="width:100%; margin-bottom:10px;">
+<input id="password" type="password" placeholder="Password" style="width:100%; margin-bottom:10px;">
+
+<button onclick="loginFromUI()" style="width:100%; margin-bottom:10px;">Login</button>
+<button onclick="signupFromUI()" style="width:100%; margin-bottom:10px;">Sign up</button>
+<button onclick="toggleAuthUI()" style="width:100%;">Cerrar</button>
+
+</div>
+</div>
+
+</body>
+</html>
