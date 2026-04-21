@@ -18,6 +18,14 @@ async function init(){
     SUPABASE_KEY
   );
 
+  // 🔴 CRITICAL: Listen for session restore
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (session?.user) {
+      currentUser = session.user;
+      console.log("User restored:", currentUser.id);
+    }
+  });
+
   await loadUser();
 
   await checkPaymentReturn();
@@ -30,9 +38,8 @@ window.addEventListener("DOMContentLoaded", init);
 // --- USER ---
 async function loadUser(){
   try {
-    const { data, error } = await supabaseClient.auth.getUser();
-    if (error) throw error;
-    currentUser = data.user;
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    currentUser = session?.user || null;
   } catch (err) {
     console.error("Auth error:", err);
   }
@@ -134,7 +141,7 @@ async function startPayment(){
   "https://checkout.revolut.com/pay/d551a8af-84fb-4f33-8f53-73160994575e";
 }
 
-// --- PAYMENT RETURN ---
+// --- PAYMENT RETURN (FIXED) ---
 async function checkPaymentReturn(){
 
   const urlParams = new URLSearchParams(window.location.search);
@@ -143,8 +150,14 @@ async function checkPaymentReturn(){
 
   await loadUser();
 
+  // 🔴 wait for session to stabilize
   if(!currentUser){
-    alert("Sesión perdida. Inicia sesión otra vez.");
+    await new Promise(r => setTimeout(r, 1500));
+    await loadUser();
+  }
+
+  if(!currentUser){
+    alert("Sesión no detectada. Abre el link en Chrome.");
     return;
   }
 
