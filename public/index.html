@@ -6,10 +6,6 @@
 
   <title>Mercadito Nandaime</title>
 
-  <!-- SUPABASE -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-
-  <!-- CSS -->
   <link rel="stylesheet" href="/style.css" />
 </head>
 
@@ -25,31 +21,14 @@
     <input type="text" id="title" placeholder="Título" required />
     <textarea id="description" placeholder="Descripción"></textarea>
     <input type="number" id="price" placeholder="Precio" required />
-    <input type="file" id="image" />
 
-    <!-- IMPORTANT: explicit type -->
     <button type="submit">Publicar</button>
   </form>
-
-  <!-- AUTH MODAL -->
-  <div id="authModal" class="hidden">
-    <div class="modal-content">
-      <h2>Login / Signup</h2>
-
-      <input type="email" id="email" placeholder="Email" />
-      <input type="password" id="password" placeholder="Password" />
-
-      <!-- IMPORTANT: prevent form submit -->
-      <button type="button" id="loginBtn">Login</button>
-      <button type="button" id="signupBtn">Signup</button>
-    </div>
-  </div>
 
   <div id="listings"></div>
 
 </main>
 
-<!-- IMPORTANT: defer ensures DOM is ready -->
 <script src="/main.js" defer></script>
 
 </body>
