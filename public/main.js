@@ -1,6 +1,17 @@
 console.log("MAIN JS LOADED");
 
 // ----------------------
+// SUPABASE INIT
+// ----------------------
+const SUPABASE_URL = "https://ddfvxfaqbuybiwnfejwh.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+
+const supabase = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+// ----------------------
 // STATE
 // ----------------------
 let currentUser = null;
@@ -14,11 +25,22 @@ const loginBtn = document.getElementById("loginBtn");
 const signupBtn = document.getElementById("signupBtn");
 
 // ----------------------
-// TEST CLICK (DEBUG)
+// SESSION CHECK
 // ----------------------
-window.testClick = function () {
-  console.log("BUTTON CLICKED");
-};
+async function checkSession() {
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error) {
+    console.error("Session error:", error);
+    return;
+  }
+
+  if (data?.user) {
+    currentUser = data.user;
+    console.log("USER RESTORED:", currentUser.id);
+    resumeFlow();
+  }
+}
 
 // ----------------------
 // FORM SUBMIT
@@ -29,7 +51,6 @@ form.addEventListener("submit", async (e) => {
 
   if (!currentUser) {
     console.log("NOT LOGGED IN → OPEN MODAL");
-
     savePendingListing();
     modal.classList.remove("hidden");
     return;
@@ -69,22 +90,53 @@ function loadPendingListing() {
 }
 
 // ----------------------
-// AUTH (SIMULATED SAFE)
+// LOGIN
 // ----------------------
-loginBtn.addEventListener("click", () => {
+loginBtn.addEventListener("click", async () => {
   console.log("LOGIN CLICKED");
 
-  currentUser = { id: "demo-user" };
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    console.error("Login error:", error.message);
+    alert(error.message);
+    return;
+  }
+
+  currentUser = data.user;
 
   modal.classList.add("hidden");
 
   resumeFlow();
 });
 
-signupBtn.addEventListener("click", () => {
+// ----------------------
+// SIGNUP
+// ----------------------
+signupBtn.addEventListener("click", async () => {
   console.log("SIGNUP CLICKED");
 
-  currentUser = { id: "demo-user" };
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  if (error) {
+    console.error("Signup error:", error.message);
+    alert(error.message);
+    return;
+  }
+
+  currentUser = data.user;
 
   modal.classList.add("hidden");
 
@@ -95,56 +147,4 @@ signupBtn.addEventListener("click", () => {
 // RESUME FLOW
 // ----------------------
 function resumeFlow() {
-  console.log("RESUMING FLOW");
-
-  const pending = localStorage.getItem("pendingListing");
-  if (!pending) return;
-
-  publishListing();
-}
-
-// ----------------------
-// PUBLISH
-// ----------------------
-async function publishListing() {
-  console.log("PUBLISH CLICKED");
-
-  const listing = {
-    title: document.getElementById("title").value,
-    description: document.getElementById("description").value,
-    price: document.getElementById("price").value,
-  };
-
-  try {
-    renderListing(listing);
-
-    localStorage.removeItem("pendingListing");
-
-    console.log("Listing published (mock)");
-  } catch (err) {
-    console.error("Publish failed", err);
-  }
-}
-
-// ----------------------
-// RENDER
-// ----------------------
-function renderListing(item) {
-  const container = document.getElementById("listings");
-
-  const div = document.createElement("div");
-  div.className = "card";
-
-  div.innerHTML = `
-    <h3>${item.title}</h3>
-    <p>${item.description}</p>
-    <strong>$${item.price}</strong>
-  `;
-
-  container.prepend(div);
-}
-
-// ----------------------
-// INIT
-// ----------------------
-loadPendingListing();
+  console
