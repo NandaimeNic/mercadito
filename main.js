@@ -25,49 +25,87 @@ function clearPendingListing() {
 
 // ===== AUTH =====
 async function signUp(email, password) {
+  console.log("SIGNUP ATTEMPT");
+
   const { error } = await supabase.auth.signUp({ email, password });
-  if (error) console.error("Signup error:", error.message);
+
+  if (error) {
+    console.error("Signup error:", error.message);
+    return;
+  }
+
+  console.log("Signup success");
 }
 
 async function login(email, password) {
+  console.log("LOGIN ATTEMPT");
+
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) console.error("Login error:", error.message);
+
+  if (error) {
+    console.error("Login error:", error.message);
+    return;
+  }
+
+  console.log("Login success");
+
+  // refresh session immediately after login
+  await restoreSession();
+  await resumeAfterLogin();
 }
 
 async function logout() {
   const { error } = await supabase.auth.signOut();
   if (error) console.error("Logout error:", error.message);
+
   currentUser = null;
   currentProfile = null;
 }
 
 // ===== SESSION RESTORE =====
 async function restoreSession() {
+  console.log("RESTORING SESSION");
+
   const { data, error } = await supabase.auth.getSession();
-  if (error) return console.error("Session error:", error.message);
+
+  if (error) {
+    console.error("Session error:", error.message);
+    return;
+  }
 
   if (data.session) {
     currentUser = data.session.user;
+    console.log("USER RESTORED:", currentUser.id);
     await loadProfile();
+  } else {
+    console.log("NO ACTIVE SESSION");
   }
 }
 
 // ===== PROFILE =====
 async function loadProfile() {
+  if (!currentUser) return;
+
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", currentUser.id)
     .single();
 
-  if (error) return console.error("Profile error:", error.message);
+  if (error) {
+    console.error("Profile error:", error.message);
+    return;
+  }
 
   currentProfile = data;
+  console.log("PROFILE LOADED:", currentProfile);
 }
 
 // ===== IMAGE UPLOAD =====
 async function uploadImage(file) {
   try {
+    console.log("UPLOADING IMAGE");
+
     const filePath = `${Date.now()}-${file.name}`;
 
     const { error } = await supabase.storage
@@ -80,6 +118,8 @@ async function uploadImage(file) {
       .from("listings")
       .getPublicUrl(filePath);
 
+    console.log("IMAGE UPLOADED");
+
     return data.publicUrl;
   } catch (err) {
     console.error("Upload failed:", err.message);
@@ -89,26 +129,38 @@ async function uploadImage(file) {
 
 // ===== INSERT LISTING =====
 async function insertListing(listing) {
+  console.log("INSERTING LISTING");
+
   const { error } = await supabase.from("listings").insert([listing]);
+
   if (error) {
     console.error("Insert failed:", error.message);
     return false;
   }
+
+  console.log("INSERT SUCCESS");
   return true;
 }
 
 // ===== PAYMENT REDIRECT =====
 function goToPayment() {
+  console.log("REDIRECTING TO PAYMENT");
   window.location.href = "/?paid=true";
 }
 
 // ===== HANDLE POST FLOW =====
 async function handlePublish(form) {
-  if (isSubmitting) return;
+  console.log("PUBLISH CLICKED");
+
+  if (isSubmitting) {
+    console.warn("Already submitting");
+    return;
+  }
+
   isSubmitting = true;
 
   try {
-    const file = form.image.files[0];
+    const file = form.image?.files?.[0];
     let imageUrl = null;
 
     if (file) {
@@ -126,27 +178,37 @@ async function handlePublish(form) {
       is_active: true
     };
 
-    // ALWAYS save first
+    console.log("LISTING PREPARED:", listing);
+
+    // Save first (critical for recovery)
     savePendingListing(listing);
 
-    // 🚨 AUTH GUARD (this is what you asked for)
+    // AUTH GUARD
     if (!currentUser) {
+      console.log("NO USER → OPEN MODAL");
       openAuthModal();
       return;
     }
 
-    // ADMIN = skip payment
+    // ADMIN BYPASS
     if (currentProfile?.role === "admin") {
       listing.user_id = currentUser.id;
-      await insertListing(listing);
-      clearPendingListing();
-      loadListings();
+
+      const success = await insertListing(listing);
+
+      if (success) {
+        clearPendingListing();
+        await loadListings();
+      }
+
       return;
     }
 
-    // NORMAL USER → payment
+    // NORMAL USER
     goToPayment();
 
+  } catch (err) {
+    console.error("Publish error:", err);
   } finally {
     isSubmitting = false;
   }
@@ -154,6 +216,8 @@ async function handlePublish(form) {
 
 // ===== AFTER LOGIN RESUME =====
 async function resumeAfterLogin() {
+  console.log("RESUME AFTER LOGIN");
+
   const pending = loadPendingListing();
   if (!pending) return;
 
@@ -161,9 +225,13 @@ async function resumeAfterLogin() {
 
   if (currentProfile?.role === "admin") {
     pending.user_id = currentUser.id;
-    await insertListing(pending);
-    clearPendingListing();
-    loadListings();
+
+    const success = await insertListing(pending);
+
+    if (success) {
+      clearPendingListing();
+      await loadListings();
+    }
   } else {
     goToPayment();
   }
@@ -172,29 +240,42 @@ async function resumeAfterLogin() {
 // ===== AFTER PAYMENT =====
 async function handlePaymentReturn() {
   const params = new URLSearchParams(window.location.search);
+
   if (params.get("paid") !== "true") return;
 
+  console.log("PAYMENT RETURN DETECTED");
+
   const pending = loadPendingListing();
-  if (!pending || !currentUser) return;
+
+  if (!pending || !currentUser) {
+    console.warn("Missing pending or user");
+    return;
+  }
 
   pending.user_id = currentUser.id;
 
   const success = await insertListing(pending);
+
   if (success) {
     clearPendingListing();
-    loadListings();
+    await loadListings();
   }
 }
 
 // ===== LOAD LISTINGS =====
 async function loadListings() {
+  console.log("LOADING LISTINGS");
+
   const { data, error } = await supabase
     .from("listings")
     .select("*")
     .eq("is_active", true)
     .order("created_at", { ascending: false });
 
-  if (error) return console.error("Load listings error:", error.message);
+  if (error) {
+    console.error("Load listings error:", error.message);
+    return;
+  }
 
   const container = document.getElementById("listings");
   if (!container) return;
@@ -218,11 +299,19 @@ async function loadListings() {
 // ===== AUTH MODAL =====
 function openAuthModal() {
   const modal = document.getElementById("authModal");
-  if (modal) modal.style.display = "block";
+
+  if (!modal) {
+    console.error("Auth modal missing");
+    return;
+  }
+
+  modal.style.display = "block";
 }
 
 // ===== INIT =====
 window.addEventListener("DOMContentLoaded", async () => {
+  console.log("APP INIT");
+
   await restoreSession();
 
   if (currentUser) {
