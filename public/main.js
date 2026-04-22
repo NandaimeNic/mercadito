@@ -1,10 +1,10 @@
-console.log("MAIN JS LOADED");
+console.log("MAIN JS LOADED v3");
 
 // ----------------------
 // SUPABASE INIT
 // ----------------------
 const SUPABASE_URL = "https://ddfvxfaqbuybiwnfejwh.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+const SUPABASE_ANON_KEY = "YOUR_ANON_KEY"; // <-- REPLACE
 
 const supabase = window.supabase.createClient(
   SUPABASE_URL,
@@ -144,7 +144,77 @@ signupBtn.addEventListener("click", async () => {
 });
 
 // ----------------------
-// RESUME FLOW
+// RESUME FLOW (FIXED)
 // ----------------------
 function resumeFlow() {
-  console
+  console.log("RESUMING FLOW");
+
+  const pending = localStorage.getItem("pendingListing");
+  if (!pending) return;
+
+  publishListing();
+}
+
+// ----------------------
+// PUBLISH
+// ----------------------
+async function publishListing() {
+  console.log("PUBLISH CLICKED");
+
+  const title = document.getElementById("title").value;
+  const description = document.getElementById("description").value;
+  const price = document.getElementById("price").value;
+
+  try {
+    const { data, error } = await supabase
+      .from("listings")
+      .insert([
+        {
+          title,
+          description,
+          price,
+          user_id: currentUser.id
+        }
+      ])
+      .select();
+
+    if (error) {
+      console.error("Insert error:", error);
+      alert("Failed to publish");
+      return;
+    }
+
+    console.log("INSERT SUCCESS:", data);
+
+    renderListing({ title, description, price });
+
+    localStorage.removeItem("pendingListing");
+
+  } catch (err) {
+    console.error("Unexpected error:", err);
+  }
+}
+
+// ----------------------
+// RENDER
+// ----------------------
+function renderListing(item) {
+  const container = document.getElementById("listings");
+
+  const div = document.createElement("div");
+  div.className = "card";
+
+  div.innerHTML = `
+    <h3>${item.title}</h3>
+    <p>${item.description}</p>
+    <strong>$${item.price}</strong>
+  `;
+
+  container.prepend(div);
+}
+
+// ----------------------
+// INIT
+// ----------------------
+loadPendingListing();
+checkSession();
