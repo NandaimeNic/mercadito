@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</head>
+<body>
+
+<h2>Mercadito Nandaime</h2>
+
+<form id="listingForm">
+  <input name="title" placeholder="Title" required />
+  <input name="price" placeholder="Price" required />
+  <input name="category" placeholder="Category" />
+  <textarea name="description"></textarea>
+  <input name="phone" placeholder="Phone" />
+  <input type="file" name="image" />
+  <button type="submit">Publish</button>
+</form>
+
+<div id="listings"></div>
+
+<!-- AUTH MODAL -->
+<div id="authModal" style="display:none;">
+  <input id="email" placeholder="Email"/>
+  <input id="password" type="password" placeholder="Password"/>
+  <button onclick="login(email.value, password.value)">Login</button>
+  <button onclick="signUp(email.value, password.value)">Signup</button>
+</div>
+
+<script src="main.js"></script>
+
+<script>
+document.getElementById("listingForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  await handlePublish(e.target);
+});
+</script>
+
+</body>
+</html>
