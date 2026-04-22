@@ -1,12 +1,13 @@
 // ===== CONFIG =====
-const SUPABASE_URL = "YOUR_SUPABASE_URL";
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+const SUPABASE_URL = "https://ddfvxfaqbuybiwnfejwh.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_sq748d9a6577RhRgjMjyew_IYFrxhve";
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== STATE =====
 let currentUser = null;
 let currentProfile = null;
+let isSubmitting = false;
 
 // ===== LOCAL STORAGE =====
 function savePendingListing(data) {
@@ -25,12 +26,12 @@ function clearPendingListing() {
 // ===== AUTH =====
 async function signUp(email, password) {
   const { error } = await supabase.auth.signUp({ email, password });
-  if (error) return console.error("Signup error:", error.message);
+  if (error) console.error("Signup error:", error.message);
 }
 
 async function login(email, password) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return console.error("Login error:", error.message);
+  if (error) console.error("Login error:", error.message);
 }
 
 async function logout() {
@@ -82,7 +83,7 @@ async function uploadImage(file) {
     return data.publicUrl;
   } catch (err) {
     console.error("Upload failed:", err.message);
-    return null; // SAFE FAIL
+    return null;
   }
 }
 
@@ -103,40 +104,48 @@ function goToPayment() {
 
 // ===== HANDLE POST FLOW =====
 async function handlePublish(form) {
-  const file = form.image.files[0];
+  if (isSubmitting) return;
+  isSubmitting = true;
 
-  let imageUrl = null;
-  if (file) {
-    imageUrl = await uploadImage(file);
+  try {
+    const file = form.image.files[0];
+    let imageUrl = null;
+
+    if (file) {
+      imageUrl = await uploadImage(file);
+    }
+
+    const listing = {
+      user_id: currentUser?.id || null,
+      title: form.title.value,
+      price: form.price.value,
+      category: form.category.value,
+      description: form.description.value,
+      phone: form.phone.value,
+      image_url: imageUrl,
+      is_active: true
+    };
+
+    savePendingListing(listing);
+
+    if (!currentUser) {
+      openAuthModal();
+      return;
+    }
+
+    if (currentProfile.role === "admin") {
+      listing.user_id = currentUser.id;
+      await insertListing(listing);
+      clearPendingListing();
+      loadListings();
+      return;
+    }
+
+    goToPayment();
+
+  } finally {
+    isSubmitting = false;
   }
-
-  const listing = {
-    user_id: currentUser?.id || null,
-    title: form.title.value,
-    price: form.price.value,
-    category: form.category.value,
-    description: form.description.value,
-    phone: form.phone.value,
-    image_url: imageUrl,
-    is_active: true
-  };
-
-  savePendingListing(listing);
-
-  if (!currentUser) {
-    openAuthModal();
-    return;
-  }
-
-  if (currentProfile.role === "admin") {
-    listing.user_id = currentUser.id;
-    await insertListing(listing);
-    clearPendingListing();
-    loadListings();
-    return;
-  }
-
-  goToPayment();
 }
 
 // ===== AFTER LOGIN RESUME =====
@@ -186,11 +195,14 @@ async function loadListings() {
 
   data.forEach(item => {
     const el = document.createElement("div");
+    el.className = "card";
+
     el.innerHTML = `
       <h3>${item.title}</h3>
       <p>${item.price}</p>
-      <img src="${item.image_url || ""}" width="100"/>
+      ${item.image_url ? `<img src="${item.image_url}" />` : ""}
     `;
+
     container.appendChild(el);
   });
 }
