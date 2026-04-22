@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: url('background.jpg') no-repeat center center fixed;
+      background-size: cover;
+    }
+
+    .overlay {
+      min-height: 100vh;
+      background: rgba(255,255,255,0.65);
+      backdrop-filter: blur(6px);
+      padding: 16px;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: auto;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(255,255,255,0.85);
+      padding: 12px;
+      border-radius: 10px;
+    }
+
+    input, textarea, button {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    button {
+      background: #0ea5a4;
+      color: white;
+      border: none;
+    }
+
+    #listings {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.9);
+      padding: 10px;
+      border-radius: 10px;
+    }
+
+    .card img {
+      width: 100%;
+      border-radius: 8px;
+      margin-top: 6px;
+    }
+
+    #authModal {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background: white;
+      padding: 16px;
+      display: none;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="overlay">
+  <div class="container">
+
+    <h2>Mercadito Nandaime</h2>
+
+    <form id="listingForm">
+      <input name="title" placeholder="Title" required />
+      <input name="price" placeholder="Price" required />
+      <input name="category" placeholder="Category" />
+      <textarea name="description" placeholder="Description"></textarea>
+      <input name="phone" placeholder="Phone" />
+      <input type="file" name="image" />
+      <button type="submit">Publish</button>
+    </form>
+
+    <div id="listings"></div>
+
+  </div>
+</div>
+
+<div id="authModal">
+  <input id="email" placeholder="Email"/>
+  <input id="password" type="password" placeholder="Password"/>
+  <button onclick="login(email.value, password.value)">Login</button>
+  <button onclick="signUp(email.value, password.value)">Signup</button>
+</div>
+
+<script src="main.js"></script>
+
+<script>
+window.addEventListener("DOMContentLoaded", () => {
+  console.log("DOM READY");
+
+  const form = document.getElementById("listingForm");
+
+  if (!form) {
+    console.error("Form not found");
+    return;
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    console.log("FORM SUBMIT");
+    await handlePublish(e.target);
+  });
+});
+</script>
+
+</body>
+</html>
