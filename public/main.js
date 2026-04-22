@@ -1,82 +1,28 @@
-console.log("STEP 2: LOGIN SYSTEM");
+loginBtn.addEventListener("click", async () => {
+  console.log("LOGIN CLICKED");
 
-// ----------------------
-// STATE
-// ----------------------
-let currentUser = null;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
-// ----------------------
-// ELEMENTS
-// ----------------------
-const form = document.getElementById("listingForm");
-const listings = document.getElementById("listings");
-const modal = document.getElementById("authModal");
-const loginBtn = document.getElementById("loginBtn");
+  console.log("EMAIL:", email);
 
-// ----------------------
-// FORM SUBMIT
-// ----------------------
-form.addEventListener("submit", (e) => {
-  e.preventDefault();
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
 
-  if (!currentUser) {
-    console.log("NOT LOGGED IN");
-    modal.classList.remove("hidden");
+  console.log("RESULT:", data, error);
+
+  if (error) {
+    alert(error.message);
+    console.error("LOGIN ERROR:", error);
     return;
   }
 
-  createListing();
-});
-
-// ----------------------
-// LOGIN
-// ----------------------
-loginBtn.addEventListener("click", () => {
-  const username = document.getElementById("username").value;
-
-  if (!username) {
-    alert("Enter username");
-    return;
-  }
-
-  currentUser = { name: username };
-
+  currentUser = data.user;
   modal.classList.add("hidden");
 
-  console.log("LOGGED IN:", username);
+  console.log("LOGIN SUCCESS");
 
   createListing();
 });
-
-// ----------------------
-// CREATE LISTING
-// ----------------------
-function createListing() {
-  const title = document.getElementById("title").value;
-  const description = document.getElementById("description").value;
-  const price = document.getElementById("price").value;
-
-  const item = { title, description, price };
-
-  renderListing(item);
-
-  form.reset();
-
-  console.log("LISTING CREATED");
-}
-
-// ----------------------
-// RENDER
-// ----------------------
-function renderListing(item) {
-  const div = document.createElement("div");
-  div.className = "card";
-
-  div.innerHTML = `
-    <h3>${item.title}</h3>
-    <p>${item.description}</p>
-    <strong>$${item.price}</strong>
-  `;
-
-  listings.prepend(div);
-}
