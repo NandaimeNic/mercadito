@@ -1,5 +1,5 @@
 console.log("MAIN JS LOADED");
 
-function testClick() {
+window.testClick = function () {
   console.log("BUTTON CLICKED");
-}
+};
