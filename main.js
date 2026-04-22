@@ -126,14 +126,17 @@ async function handlePublish(form) {
       is_active: true
     };
 
+    // ALWAYS save first
     savePendingListing(listing);
 
+    // 🚨 AUTH GUARD (this is what you asked for)
     if (!currentUser) {
       openAuthModal();
       return;
     }
 
-    if (currentProfile.role === "admin") {
+    // ADMIN = skip payment
+    if (currentProfile?.role === "admin") {
       listing.user_id = currentUser.id;
       await insertListing(listing);
       clearPendingListing();
@@ -141,6 +144,7 @@ async function handlePublish(form) {
       return;
     }
 
+    // NORMAL USER → payment
     goToPayment();
 
   } finally {
@@ -153,7 +157,9 @@ async function resumeAfterLogin() {
   const pending = loadPendingListing();
   if (!pending) return;
 
-  if (currentProfile.role === "admin") {
+  if (!currentUser) return;
+
+  if (currentProfile?.role === "admin") {
     pending.user_id = currentUser.id;
     await insertListing(pending);
     clearPendingListing();
@@ -191,6 +197,8 @@ async function loadListings() {
   if (error) return console.error("Load listings error:", error.message);
 
   const container = document.getElementById("listings");
+  if (!container) return;
+
   container.innerHTML = "";
 
   data.forEach(item => {
@@ -209,7 +217,8 @@ async function loadListings() {
 
 // ===== AUTH MODAL =====
 function openAuthModal() {
-  document.getElementById("authModal").style.display = "block";
+  const modal = document.getElementById("authModal");
+  if (modal) modal.style.display = "block";
 }
 
 // ===== INIT =====
