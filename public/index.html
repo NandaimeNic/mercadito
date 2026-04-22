@@ -4,22 +4,51 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+  <title>Mercadito Nandaime</title>
+
   <!-- SUPABASE -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
   <!-- CSS -->
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/style.css" />
 </head>
 
 <body>
 
-<h1>TEST PAGE</h1>
+<header>
+  <h1>Mercadito Nandaime</h1>
+</header>
 
-<button onclick="testClick()">Click me</button>
+<main>
 
-<div id="listings"></div>
+  <!-- FORM -->
+  <form id="listingForm">
+    <input type="text" id="title" placeholder="Título" required />
+    <textarea id="description" placeholder="Descripción"></textarea>
+    <input type="number" id="price" placeholder="Precio" required />
+    <input type="file" id="image" />
 
-<script src="main.js"></script>
+    <button type="submit">Publicar</button>
+  </form>
+
+  <!-- LOGIN MODAL -->
+  <div id="authModal" class="hidden">
+    <div class="modal-content">
+      <h2>Login / Signup</h2>
+      <input type="email" id="email" placeholder="Email" />
+      <input type="password" id="password" placeholder="Password" />
+
+      <button id="loginBtn">Login</button>
+      <button id="signupBtn">Signup</button>
+    </div>
+  </div>
+
+  <!-- LISTINGS -->
+  <div id="listings"></div>
+
+</main>
+
+<script src="/main.js"></script>
 
 </body>
 </html>
