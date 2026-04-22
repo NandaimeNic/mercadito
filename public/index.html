@@ -27,6 +27,7 @@
     <input type="number" id="price" placeholder="Precio" required />
     <input type="file" id="image" />
 
+    <!-- IMPORTANT: explicit type -->
     <button type="submit">Publicar</button>
   </form>
 
@@ -34,11 +35,13 @@
   <div id="authModal" class="hidden">
     <div class="modal-content">
       <h2>Login / Signup</h2>
+
       <input type="email" id="email" placeholder="Email" />
       <input type="password" id="password" placeholder="Password" />
 
-      <button id="loginBtn">Login</button>
-      <button id="signupBtn">Signup</button>
+      <!-- IMPORTANT: prevent form submit -->
+      <button type="button" id="loginBtn">Login</button>
+      <button type="button" id="signupBtn">Signup</button>
     </div>
   </div>
 
@@ -46,7 +49,8 @@
 
 </main>
 
-<script src="/main.js"></script>
+<!-- IMPORTANT: defer ensures DOM is ready -->
+<script src="/main.js" defer></script>
 
 </body>
 </html>
